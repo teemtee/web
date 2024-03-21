@@ -9,30 +9,30 @@ def client():
 
 class TestApi:
     def test_basic_test_request(self, client):
-        # ?test_url=https://github.com/teemtee/tmt&test_name=/tests/core/smoke
-        response = client.get("/", query_string={"test_url": "https://github.com/teemtee/tmt",
-                                                 "test_name": "/tests/core/smoke"})
+        # ?test_url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke
+        response = client.get("/", query_string={"test-url": "https://github.com/teemtee/tmt",
+                                                 "test-name": "/tests/core/smoke"})
         data = response.data.decode("utf-8")
         print(data)
         assert "500" not in data
         assert "https://github.com/teemtee/tmt/tree/main/tests/core/smoke/main.fmf" in data
 
     def test_basic_plan_request(self, client):
-        # ?plan_url=https://github.com/teemtee/tmt&plan_name=/plans/features/basic&type=plan
-        response = client.get("/", query_string={"plan_url": "https://github.com/teemtee/tmt",
-                                                 "plan_name": "/plans/features/basic"})
+        # ?plan-url=https://github.com/teemtee/tmt&plan-name=/plans/features/basic&type=plan
+        response = client.get("/", query_string={"plan-url": "https://github.com/teemtee/tmt",
+                                                 "plan-name": "/plans/features/basic"})
         data = response.data.decode("utf-8")
         print(data)
         assert "500" not in data
         assert "https://github.com/teemtee/tmt/tree/main/plans/features/basic.fmf" in data
 
     def test_basic_testplan_request(self, client):
-        # ?test_url=https://github.com/teemtee/tmt&test_name=/tests/core/smoke&
-        # ?plan_url=https://github.com/teemtee/tmt&plan_name=/plans/features/basic&type=plan
-        response = client.get("/", query_string={"test_url": "https://github.com/teemtee/tmt",
-                                                 "test_name": "/tests/core/smoke",
-                                                 "plan_url": "https://github.com/teemtee/tmt",
-                                                 "plan_name": "/plans/features/basic"})
+        # ?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke&
+        # ?plan-url=https://github.com/teemtee/tmt&plan-name=/plans/features/basic&type=plan
+        response = client.get("/", query_string={"test-url": "https://github.com/teemtee/tmt",
+                                                 "test-name": "/tests/core/smoke",
+                                                 "plan-url": "https://github.com/teemtee/tmt",
+                                                 "plan-name": "/plans/features/basic"})
         data = response.data.decode("utf-8")
         print(data)
         assert "500" not in data
@@ -40,30 +40,30 @@ class TestApi:
         assert "https://github.com/teemtee/tmt/tree/main/plans/features/basic.fmf" in data
 
     def test_invalid_test_arguments(self, client):
-        response = client.get("/", query_string={"test_url": "https://github.com/teemtee/tmt",
-                                                 "test_name": None})
+        response = client.get("/", query_string={"test-url": "https://github.com/teemtee/tmt",
+                                                 "test-name": None})
         data = response.data.decode("utf-8")
         assert "Invalid arguments!" in data
-        response = client.get("/", query_string={"test_url": None,
-                                                 "test_name": "/tests/core/smoke"})
+        response = client.get("/", query_string={"test-url": None,
+                                                 "test-name": "/tests/core/smoke"})
         data = response.data.decode("utf-8")
         assert "Invalid arguments!" in data
 
     def test_invalid_plan_arguments(self, client):
-        response = client.get("/", query_string={"plan_url": "https://github.com/teemtee/tmt",
-                                                 "plan_name": None})
+        response = client.get("/", query_string={"plan-url": "https://github.com/teemtee/tmt",
+                                                 "plan-name": None})
         data = response.data.decode("utf-8")
         assert "Invalid arguments!" in data
-        response = client.get("/", query_string={"plan_url": None,
-                                                 "plan_name": "/plans/features/basic"})
+        response = client.get("/", query_string={"plan-url": None,
+                                                 "plan-name": "/plans/features/basic"})
         data = response.data.decode("utf-8")
         assert "Invalid arguments!" in data
 
     def test_invalid_testplan_arguments(self, client):
-        response = client.get("/", query_string={"test_url": "https://github.com/teemtee/tmt",
-                                                 "test_name": None,
-                                                 "plan_url": "https://github.com/teemtee/tmt",
-                                                 "plan_name": "/plans/features/basic"})
+        response = client.get("/", query_string={"test-url": "https://github.com/teemtee/tmt",
+                                                 "test-name": None,
+                                                 "plan-url": "https://github.com/teemtee/tmt",
+                                                 "plan-name": "/plans/features/basic"})
         data = response.data.decode("utf-8")
         assert "Invalid arguments!" in data
 
