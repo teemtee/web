@@ -1,0 +1,13 @@
+/link_new_test:
+    story:
+        As a user I want to link a newly created test to a Jira issue.
+
+    description:
+        User should be able to link a newly created test/plan to JIRA issue.
+
+/link_existing_test:
+    story:
+        As a user I want to link an existing tmt test to a Jira issue.
+
+    description:
+        User should be able to link a already existing test/plan to JIRA issue.

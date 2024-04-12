@@ -1,0 +1,45 @@
+/clickable_test_link
+    story:
+        As a tester I want to link test verifying Jira issue.
+
+    description:
+        User can click on a link in JIRA issue that returns human-readable metadata of test that covers
+        this issue.
+
+    example:
+      - |
+        url-options: ?test_url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke
+
+    link:
+      - https://issues.redhat.com/browse/TT-207
+
+/clickable_plan_link
+    story:
+        As a tester I want to link plan verifying Jira issue.
+
+    description:
+        User can click on a link in JIRA issue that returns human-readable metadata of plan that covers
+        this issue.
+
+    example:
+      - |
+        url-options: ?plan-url=https://github.com/teemtee/tmt&plan-name=/plans/features/basic&type=plan
+
+    link:
+      - https://issues.redhat.com/browse/TT-207
+
+/clickable_test_and_plan_link
+    story:
+        As a tester I want to link test and plan verifying Jira issue.
+
+    description:
+        User can click on a link in JIRA issue that returns human-readable metadata of test and plan that both cover
+        this issue.
+
+    example:
+      - |
+        url-options: ?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke&?plan-url=https://github.com/teemtee/tmt&plan-name=/plans/features/basic&type=plan
+
+    link:
+      - https://issues.redhat.com/browse/TT-207
+
