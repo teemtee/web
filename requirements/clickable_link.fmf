@@ -1,0 +1,21 @@
+story:
+    As a user I want to have a clickable link to test/plan verifying the issue.
+
+description:
+    User can click on a link in JIRA issue that returns human-readable metadata of test/plan/test+plan that cover
+    this issue.
+    There are three options to display:
+    - test - displays test metadata
+    - plan - displays plan metadata
+    - test+plan - displays test metadata and plan metadata
+
+example:
+  - |
+    url-options: ?test_url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke
+  - |
+    url-options: ?plan-url=https://github.com/teemtee/tmt&plan-name=/plans/features/basic&type=plan
+  - |
+    url-options: ?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke&?plan-url=https://github.com/teemtee/tmt&plan-name=/plans/features/basic&type=plan
+
+link:
+  - https://issues.redhat.com/browse/TT-207

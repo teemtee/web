@@ -1,0 +1,6 @@
+story:
+    As a user I want to link a newly created test to a Jira issue.
+
+description:
+    User should be able to link a newly created test/plan to JIRA issue.
+
