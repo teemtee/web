@@ -3,8 +3,8 @@
         As a tester I want to link test verifying Jira issue.
 
     description:
-        User can click on a link in JIRA issue that returns human-readable metadata of test that covers
-        this issue.
+        For cases when there is a single test verifying given issue there would be fmf
+        identifier pointing to that individual test.
 
     example:
       - |
@@ -18,8 +18,9 @@
         As a tester I want to link plan verifying Jira issue.
 
     description:
-        User can click on a link in JIRA issue that returns human-readable metadata of plan that covers
-        this issue.
+        For cases when there is a single plan verifying given issue there would be fmf
+        identifier pointing to that individual plan, where all the test executed under the given plan are
+        covering the issue.
 
     example:
       - |
@@ -33,8 +34,11 @@
         As a tester I want to link test and plan verifying Jira issue.
 
     description:
-        User can click on a link in JIRA issue that returns human-readable metadata of test and plan that both cover
-        this issue.
+        If the issue is covered by a tmt test which should be executed
+        under a specific tmt plan, fmf identifiers of both test and
+        plan would be provided to select what exactly would be
+        executed. This should allow faster test execution as the whole
+        tmt plan does not have to be executed.
 
     example:
       - |

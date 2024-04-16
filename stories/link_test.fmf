@@ -5,9 +5,21 @@
     description:
         User should be able to link a newly created test/plan to JIRA issue.
 
+    example:
+      - |
+        command: tmt test create /tests/smoke --link verifies:https://foo.com/a/b/c --generate-url
+
 /link_existing_test:
     story:
         As a user I want to link an existing tmt test to a Jira issue.
 
     description:
         User should be able to link a already existing test/plan to JIRA issue.
+
+    example:
+      - |
+        command: tmt generate-url test /tests/smoke --link verifies:https://foo.com/a/b/c
+      - |
+        command: tmt generate-url plan /plans/core --link verifies:https://foo.com/a/b/c
+      - |
+        command: tmt generate-url testplan /tests/smoke /plans/core --link verifies:https://foo.com/a/b/c

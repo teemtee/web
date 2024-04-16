@@ -3,14 +3,23 @@
         As a Testing Farm I want to get a machine readable output from the service.
 
     description: |
-        Testing Farm needs to be able to get a machine readable output from the service, various formats could be
-        supported, such as JSON, YAML, XML, etc.
+        Testing Farm needs to be able to get a machine readable output from the service, JSON and YAML formats will be
+        supported.
 
 /human-readable:
     story:
         As a user I want to get a human readable output from the service.
 
     description: |
-        Users need to get result after clicking on the link in JIRA in human-readable form, such as simple HTML page.
-        Can be formatted, would be provided by a web app that communicates with the service.
+        After clicking on a link user will be presented a nicely
+        formatted web page with overview of the linked test, plan or
+        both test and plan. Among the information displayed there will
+        be:
+
+        * name
+        * summary
+        * description
+        * url to the destination
+        * ref
+        * contact
 
