@@ -19,7 +19,12 @@
         * name
         * summary
         * description
-        * url to the destination
+        * fmf identifier
+        * clickable link to the repository where metadata are defined
         * ref
         * contact
+        * tag
+        * tier
+        * id
+        * link
 
