@@ -1,4 +1,4 @@
-/clickable_test_link
+/clickable_test_link:
     story:
         As a tester I want to link test verifying Jira issue.
 
@@ -13,7 +13,7 @@
     link:
       - https://issues.redhat.com/browse/TT-207
 
-/clickable_plan_link
+/clickable_plan_link:
     story:
         As a tester I want to link plan verifying Jira issue.
 
@@ -29,7 +29,7 @@
     link:
       - https://issues.redhat.com/browse/TT-207
 
-/clickable_test_and_plan_link
+/clickable_test_and_plan_link:
     story:
         As a tester I want to link test and plan verifying Jira issue.
 
