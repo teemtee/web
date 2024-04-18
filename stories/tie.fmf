@@ -1,4 +1,4 @@
-/link_new_test:
+/new-test:
     story:
         As a user I want to link a newly created test to a Jira issue.
 
@@ -10,7 +10,7 @@
       - |
         command: tmt test create /tests/smoke --link verifies:https://foo.com/a/b/c
 
-/link_existing_test:
+/existing-test:
     story:
         As a user I want to link an existing tmt test to a Jira issue.
 
