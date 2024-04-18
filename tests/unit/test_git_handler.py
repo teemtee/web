@@ -7,7 +7,7 @@ import logging
 from src.utils import git_handler
 
 
-class TestUtils:
+class TestGitHandler:
     logger = tmt.Logger(logging.Logger("tmt-logger"))
 
     def test_clear_tmp_dir(self):
@@ -24,7 +24,7 @@ class TestUtils:
         while git_handler.check_if_repository_exists("https://github.com/teemtee/tmt") is True:
             git_handler.clear_tmp_dir(self.logger)
             time.sleep(1)
-        git_handler.clone_repository("https://github.com/teemtee/tmt", logger=self.logger)
+        git_handler.clone_repository(url="https://github.com/teemtee/tmt", logger=self.logger, ref="default")
         with pytest.raises(FileExistsError):
-            git_handler.clone_repository("https://github.com/teemtee/tmt", logger=self.logger)
+            git_handler.clone_repository(url="https://github.com/teemtee/tmt", logger=self.logger, ref="default")
 

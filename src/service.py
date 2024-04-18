@@ -1,11 +1,16 @@
-import sys
+import os
 import tmt
 import logging
 from pathlib import Path
 from src import html_generator as html
 from src.utils import git_handler as utils
+from celery.app import Celery
 
 logger = tmt.Logger(logging.Logger("tmt-logger"))
+
+redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
+
+app = Celery(__name__, broker=redis_url, backend=redis_url)
 
 
 def process_test_request(test_url: str, test_name: str, test_ref: str, return_html: bool) -> str | None | tmt.Test:
@@ -22,17 +27,18 @@ def process_test_request(test_url: str, test_name: str, test_ref: str, return_ht
     logger.print("URL: " + test_url)
     logger.print("Name: " + test_name)
 
-    utils.get_git_repository(test_url, logger)
+    utils.get_git_repository(test_url, logger, test_ref)
 
     repo_name = test_url.rsplit('/', 1)[-1]
     logger.print("Looking for tree...")
-    tree = tmt.base.Tree(path=Path("../.tmp/" + repo_name), logger=logger)
+    tree = tmt.base.Tree(path=Path("./.tmp/" + repo_name), logger=logger)
     logger.print("Tree found!", color="green")
-    logger.print("Looking for the wanted test...")
+    logger.print("Initializing the tree...")
 
     test_list = tree.tests()
     wanted_test = None
     # Find the desired Test object
+    logger.print("Looking for the wanted test...")
     for test in test_list:
         if test.name == test_name:
             wanted_test = test
@@ -60,7 +66,7 @@ def process_plan_request(plan_url: str, plan_name: str, plan_ref: str, return_ht
     logger.print("URL: " + plan_url)
     logger.print("Name: " + plan_name)
 
-    utils.get_git_repository(plan_url, logger)
+    utils.get_git_repository(plan_url, logger, plan_ref)
 
     repo_name = plan_url.rsplit('/', 1)[-1]
     logger.print("Looking for tree...")
@@ -100,12 +106,14 @@ def process_testplan_request(test_url, test_name, test_ref, plan_url, plan_name,
     return html.generate_testplan_html_page(test, plan, logger=logger)
 
 
+@app.task
 def main(test_url: str | None,
          test_name: str | None,
          test_ref: str | None,
          plan_url: str | None,
          plan_name: str | None,
-         plan_ref: str | None) -> str | None:
+         plan_ref: str | None,
+         out_format: str | None) -> str | None:
     logger.print("Starting...", color="blue")
     if test_name is not None and plan_name is None:
         return process_test_request(test_url, test_name, test_ref, True)

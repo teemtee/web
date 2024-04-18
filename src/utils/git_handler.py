@@ -6,10 +6,28 @@ import tmt.utils
 from pathlib import Path
 
 
-def clone_repository(url: str, logger: Logger) -> None:
+def checkout_branch(path: Path, logger: Logger, ref: str) -> None:
+    """
+    Checks out the given branch in the repository.
+    :param ref: Name of the ref to check out
+    :param path: Path to the repository
+    :param logger: Instance of Logger
+    :return:
+    """
+    try:
+        common_instance = tmt.utils.Common(logger=logger)
+        common_instance.run(
+            command=tmt.utils.Command('git', 'checkout', ref), cwd=path)
+    except tmt.utils.RunError:
+        logger.print("Failed to clone the repository!", color="red")
+        raise Exception
+
+
+def clone_repository(url: str, logger: Logger, ref: str) -> None:
     """
     Clones the repository from the given URL.
     Raises FileExistsError if the repository is already cloned and raises Exception if the cloning fails.
+    :param ref: Name of the ref to check out
     :param url: URL to the repository
     :param logger: Instance of Logger
     :return:
@@ -21,6 +39,8 @@ def clone_repository(url: str, logger: Logger) -> None:
         raise FileExistsError
     try:
         tmt.utils.git_clone(url=url, shallow=True, destination=path, logger=logger)
+        if ref != "default":
+            checkout_branch(ref, path, logger)
     except tmt.utils.GeneralError as e:
         logger.print("Failed to clone the repository!", color="red")
         raise Exception
@@ -68,7 +88,7 @@ def clear_tmp_dir(logger: Logger) -> None:
     logger.print(".tmp directory cleared successfully!", color="green")
 
 
-def get_git_repository(url: str, logger: Logger) -> Path:
+def get_git_repository(url: str, logger: Logger, ref: str) -> Path:
     """
     Clones the repository from the given URL and returns the path to the cloned repository.
     :param url: URL to the repository
@@ -76,7 +96,7 @@ def get_git_repository(url: str, logger: Logger) -> Path:
     :return: Path to the cloned repository
     """
     try:
-        clone_repository(url, logger)
+        clone_repository(url, logger, ref)
     except FileExistsError:
         pass
     return get_path_to_repository(url)

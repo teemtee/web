@@ -5,3 +5,6 @@ requests==2.31.0
 tmt==1.31.0
 FastAPI==0.70.0
 httpx==0.20.0
+Redis
+uvicorn
+celery
