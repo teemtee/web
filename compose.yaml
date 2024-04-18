@@ -1,0 +1,22 @@
+services:
+  web:
+    container_name: fastapi
+    build: ./src
+    environment:
+      - REDIS_URL=redis://redis:6379
+    ports:
+      - 8001:5001
+  redis:
+    container_name: redis
+    ports:
+      - 6379:6379
+    image: redis:latest
+
+  celery:
+    container_name: celery
+    build: .
+    environment:
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - redis
+

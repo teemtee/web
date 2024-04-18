@@ -1,3 +1,5 @@
+import time
+
 import pytest
 from src.api import app
 from fastapi.testclient import TestClient
@@ -54,10 +56,31 @@ class TestApi:
 
     def test_invalid_testplan_arguments(self, client):
         response = client.get("/?test-url=https://github.com/teemtee/tmt&plan-url=https://github.com/teemtee/tmt&"
-                                                 "plan-name=/plans/features/basic")
+                              "plan-name=/plans/features/basic")
         data = response.content.decode("utf-8")
         assert "Invalid arguments!" in data
 
     def test_invalid_argument_names(self, client):
         response = client.get("/?test_urlur=https://github.com/teemtee/tmt&test_nn=/tests/core/smoke")
         assert response.status_code == 500
+
+
+class TestCelery:
+    def test_basic_test_request(self, client):
+        response = client.get("/?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke")
+        data = response.content.decode("utf-8")
+        json_data = response.json()
+        while True:
+            if json_data["status"] == "PENDING":
+                response = client.get("/status?task_id=" + json_data["id"])
+                json_data = response.json()
+                time.sleep(0.1)
+            elif json_data["status"] == "SUCCESS":
+                result = json_data["result"]
+                assert "500" not in result
+                assert "https://github.com/teemtee/tmt/tree/main/tests/core/smoke/main.fmf" in result
+                break
+            elif json_data["status"] == "FAILURE":
+                assert False
+            else:
+                assert False
