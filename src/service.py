@@ -30,7 +30,7 @@ def get_tree(url: str, name: str, ref: str) -> tmt.base.Tree:
 
     repo_name = url.rsplit('/', 1)[-1]
     logger.print("Looking for tree...")
-    tree = tmt.base.Tree(path=Path(os.getenv("TMP_DIR_PATH") + repo_name), logger=logger)
+    tree = tmt.base.Tree(path=Path(os.getenv("TMP_DIR_PATH") + "/.tmp/" + repo_name), logger=logger)
     logger.print("Tree found!", color="green")
     return tree
 
@@ -81,7 +81,7 @@ def process_plan_request(plan_url: str, plan_name: str, plan_ref: str, return_ht
 
     plan_list = tree.plans()
     wanted_plan = None
-    # Find the desired Test object
+    # Find the desired Plan object
     for plan in plan_list:
         if plan.name == plan_name:
             wanted_plan = plan
