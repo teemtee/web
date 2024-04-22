@@ -24,3 +24,7 @@
         command: tmt link verifies:https://foo.com/a/b/c /plans/core
       - |
         command: tmt link verifies:https://foo.com/a/b/c /plans/core /tests/smoke
+
+    link:
+      - https://issues.redhat.com/browse/TT-262
+
