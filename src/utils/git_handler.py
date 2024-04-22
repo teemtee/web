@@ -19,8 +19,8 @@ def checkout_branch(path: Path, logger: Logger, ref: str) -> None:
         common_instance.run(
             command=tmt.utils.Command('git', 'checkout', ref), cwd=path)
     except tmt.utils.RunError:
-        logger.print("Failed to clone the repository!", color="red")
-        raise Exception
+        logger.print("Failed to do checkout in the repository!", color="red")
+        raise AttributeError
 
 
 def clone_repository(url: str, logger: Logger, ref: str) -> None:
@@ -36,12 +36,19 @@ def clone_repository(url: str, logger: Logger, ref: str) -> None:
     path = get_path_to_repository(url)
     if check_if_repository_exists(url):
         if ref != "default":
-            checkout_branch(ref=ref, path=path, logger=logger)
+            try:
+                checkout_branch(ref=ref, path=path, logger=logger)
+            except AttributeError:
+                raise AttributeError
         logger.print("Repository already cloned!", color="yellow")
         raise FileExistsError
     try:
-        tmt.utils.git_clone(url=url, shallow=True, destination=path, logger=logger)
+        tmt.utils.git_clone(url=url, destination=path, logger=logger)
         if ref != "default":
+            try:
+                checkout_branch(ref=ref, path=path, logger=logger)
+            except AttributeError:
+                raise AttributeError
             checkout_branch(ref=ref, path=path, logger=logger)
     except tmt.utils.GeneralError as e:
         logger.print("Failed to clone the repository!", color="red")
@@ -81,14 +88,13 @@ def clear_tmp_dir(logger: Logger) -> None:
     logger.print("Clearing the .tmp directory...")
     path = os.path.realpath(__file__)
     path = path.replace("src/utils/git_handler.py", "")
-    path = Path(path + "/.tmp")
-    # repo_name = .rsplit('/', 1)[-1]
+    path = Path(path + os.getenv("CLONE_DIR_PATH", "./.repos/"))
     try:
         Popen(["rm", "-rf", path])
     except Exception as e:
-        logger.print("Failed to clear the .tmp directory!", color="red")
+        logger.print("Failed to clear the repository clone directory!", color="red")
         raise e
-    logger.print(".tmp directory cleared successfully!", color="green")
+    logger.print("Repository clone directory cleared successfully!", color="green")
 
 
 def get_git_repository(url: str, logger: Logger, ref: str) -> Path:

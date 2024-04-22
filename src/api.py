@@ -4,7 +4,7 @@ from fastapi.params import Query
 from starlette.responses import HTMLResponse
 
 from src import service
-from src import html_generator
+from src.generators import html_generator
 from fastapi import FastAPI
 from pydantic import BaseModel
 from celery.result import AsyncResult
@@ -40,22 +40,23 @@ def find_test(
         html_page = service.main(test_url, test_name, test_ref, plan_url, plan_name, plan_ref, out_format)
         return html_page
     r = service.main.delay(test_url, test_name, test_ref, plan_url, plan_name, plan_ref, out_format)
+    # Special handling of response if the format is html
     if out_format == "html":
         global format_html
         format_html = True
-        status_callback_url = f'/status?task_id={r.task_id}'
+        status_callback_url = f'/status?task-id={r.task_id}&html=true'
         return HTMLResponse(content=html_generator.generate_status_callback(r, status_callback_url))
     else:
-        # To set it back to False after a html format request
-        format_html = False
+        format_html = False  # To set it back to False after a html format request
         return _to_task_out(r)
 
 
 @app.get("/status")
-def status(task_id: str) -> TaskOut | HTMLResponse:
+def status(task_id: str = Query(None, alias="task-id"),
+           html: str = Query("false")) -> TaskOut | HTMLResponse:
     r = service.main.app.AsyncResult(task_id)
-    if format_html:
-        status_callback_url = f'/status?task_id={r.task_id}'
+    if html == "true":
+        status_callback_url = f'/status?task-id={r.task_id}&html=true'
         return HTMLResponse(content=html_generator.generate_status_callback(r, status_callback_url))
     return _to_task_out(r)
 
@@ -65,5 +66,5 @@ def _to_task_out(r: AsyncResult) -> TaskOut | str:
         id=r.task_id,
         status=r.status,
         result=r.traceback if r.failed() else r.result,
-        status_callback_url=f'{os.getenv("HOSTNAME")}/status?task_id={r.task_id}'
+        status_callback_url=f'{os.getenv("HOSTNAME")}/status?task-id={r.task_id}'
     )
