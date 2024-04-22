@@ -1,22 +1,28 @@
 services:
   web:
-    container_name: fastapi
-    build: ./src
+    container_name: uvicorn
+    build: .
+    command: uvicorn src.api:app --reload --host 0.0.0.0 --port 8000
     environment:
       - REDIS_URL=redis://redis:6379
+      - TMP_DIR_PATH=./.tmp/
+      - HOSTNAME=http://localhost:8000
     ports:
-      - 8001:5001
+      - 8000:8000
   redis:
     container_name: redis
+    image: redis:latest
     ports:
       - 6379:6379
-    image: redis:latest
 
   celery:
     container_name: celery
     build: .
+    command: celery --app=src.api.service worker --concurrency=1 --loglevel=INFO
     environment:
       - REDIS_URL=redis://redis:6379
+      - TMP_DIR_PATH=./.tmp/
+      - HOSTNAME=http://localhost:8000
     depends_on:
       - redis
 
