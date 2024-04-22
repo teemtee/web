@@ -26,11 +26,10 @@ def get_tree(url: str, name: str, ref: str) -> tmt.base.Tree:
     logger.print("URL: " + url)
     logger.print("Name: " + name)
 
-    utils.get_git_repository(url, logger, ref)
+    path = utils.get_git_repository(url, logger, ref)
 
-    repo_name = url.rsplit('/', 1)[-1]
     logger.print("Looking for tree...")
-    tree = tmt.base.Tree(path=Path(os.getenv("TMP_DIR_PATH") + "/.tmp/" + repo_name), logger=logger)
+    tree = tmt.base.Tree(path=path, logger=logger)
     logger.print("Tree found!", color="green")
     return tree
 
