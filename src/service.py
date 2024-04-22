@@ -1,9 +1,9 @@
 import os
 import tmt
 import logging
-from pathlib import Path
-from src import html_generator as html
 from src.utils import git_handler as utils
+from src.generators import json_generator, html_generator as html
+from src.generators import yaml_generator
 from celery.app import Celery
 
 logger = tmt.Logger(logging.Logger("tmt-logger"))
@@ -34,13 +34,14 @@ def get_tree(url: str, name: str, ref: str) -> tmt.base.Tree:
     return tree
 
 
-def process_test_request(test_url: str, test_name: str, test_ref: str, return_html: bool) -> str | None | tmt.Test:
+def process_test_request(test_url: str, test_name: str, test_ref: str, return_object: bool, out_format: str) -> str | None | tmt.Test:
     """
     This function processes the request for a test and returns the HTML file or the Test object
     :param test_url: Test url
     :param test_name: Test name
     :param test_ref: Test repo ref
-    :param return_html: Specify if the function should return the HTML file or the Test object
+    :param return_object: Specify if the function should return the HTML file or the Test object
+    :param out_format: Specifies output format
     :return:
     """
 
@@ -59,18 +60,25 @@ def process_test_request(test_url: str, test_name: str, test_ref: str, return_ht
         logger.print("Test not found!", color="red")
         return None
     logger.print("Test found!", color="green")
-    if not return_html:
+    if not return_object:
         return wanted_test
-    return html.generate_test_html_page(wanted_test, logger=logger)
+    match out_format:
+        case "html":
+            return html.generate_test_html_page(wanted_test, logger=logger)
+        case "json":
+            return json_generator.generate_test_json(wanted_test, logger=logger)
+        case "yaml":
+            return yaml_generator.generate_test_yaml(wanted_test, logger=logger)
 
 
-def process_plan_request(plan_url: str, plan_name: str, plan_ref: str, return_html: bool) -> str | None | tmt.Plan:
+def process_plan_request(plan_url: str, plan_name: str, plan_ref: str, return_object: bool, out_format: str) -> str | None | tmt.Plan:
     """
     This function processes the request for a plan and returns the HTML file or the Plan object
     :param plan_url: Plan URL
     :param plan_name: Plan name
     :param plan_ref: Plan repo ref
-    :param return_html: Specify if the function should return the HTML file or the Plan object
+    :param return_object: Specify if the function should return the HTML file or the Plan object
+    :param out_format: Specifies output format
     :return:
     """
 
@@ -89,12 +97,18 @@ def process_plan_request(plan_url: str, plan_name: str, plan_ref: str, return_ht
         logger.print("Plan not found!", color="red")
         return None
     logger.print("Plan found!", color="green")
-    if not return_html:
+    if not return_object:
         return wanted_plan
-    return html.generate_plan_html_page(wanted_plan, logger=logger)
+    match out_format:
+        case "html":
+            return html.generate_plan_html_page(wanted_plan, logger=logger)
+        case "json":
+            return json_generator.generate_plan_json(wanted_plan, logger=logger)
+        case "yaml":
+            return yaml_generator.generate_plan_yaml(wanted_plan, logger=logger)
 
 
-def process_testplan_request(test_url, test_name, test_ref, plan_url, plan_name, plan_ref) -> str | None:
+def process_testplan_request(test_url, test_name, test_ref, plan_url, plan_name, plan_ref, out_format) -> str | None:
     """
     This function processes the request for a test and a plan and returns the HTML file
     :param test_url: Test URL
@@ -103,11 +117,18 @@ def process_testplan_request(test_url, test_name, test_ref, plan_url, plan_name,
     :param plan_url: Plan URL
     :param plan_name: Plan name
     :param plan_ref: Plan repo ref
+    :param out_format: Specifies output format
     :return:
     """
-    test = process_test_request(test_url, test_name, test_ref, False)
-    plan = process_plan_request(plan_url, plan_name, plan_ref, False)
-    return html.generate_testplan_html_page(test, plan, logger=logger)
+    test = process_test_request(test_url, test_name, test_ref, False, out_format)
+    plan = process_plan_request(plan_url, plan_name, plan_ref, False, out_format)
+    match out_format:
+        case "html":
+            return html.generate_testplan_html_page(test, plan, logger=logger)
+        case "json":
+            return json_generator.generate_testplan_json(test, plan, logger=logger)
+        case "yaml":
+            return yaml_generator.generate_testplan_yaml(test, plan, logger=logger)
 
 
 @app.task
@@ -120,11 +141,11 @@ def main(test_url: str | None,
          out_format: str | None) -> str | None:
     logger.print("Starting...", color="blue")
     if test_name is not None and plan_name is None:
-        return process_test_request(test_url, test_name, test_ref, True)
+        return process_test_request(test_url, test_name, test_ref, True, out_format)
     elif plan_name is not None and test_name is None:
-        return process_plan_request(plan_url, plan_name, plan_ref, True)
+        return process_plan_request(plan_url, plan_name, plan_ref, True, out_format)
     elif plan_name is not None and test_name is not None:
-        return process_testplan_request(test_url, test_name, test_ref, plan_url, plan_name, plan_ref)
+        return process_testplan_request(test_url, test_name, test_ref, plan_url, plan_name, plan_ref, out_format)
 
 
 if __name__ == "__main__":

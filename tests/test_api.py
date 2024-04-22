@@ -15,15 +15,30 @@ class TestApi:
     @pytest.fixture(autouse=True)
     def setup(self):
         os.environ["USE_CELERY"] = "false"
-        os.environ["TMP_DIR_PATH"] = "../.tmp/"
 
-    def test_basic_test_request(self, client):
+    def test_basic_test_request_json(self, client):
         # ?test_url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke
         response = client.get("/?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke")
         data = response.content.decode("utf-8")
         print(data)
         assert "500" not in data
         assert "https://github.com/teemtee/tmt/tree/main/tests/core/smoke/main.fmf" in data
+
+    def test_basic_test_request_html(self, client):
+        # ?test_url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke
+        response = client.get("/?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke&format=html")
+        data = response.content.decode("utf-8")
+        print(data)
+        assert "500" not in data
+        assert f'<html>' in data
+
+    def test_basic_test_request_yaml(self, client):
+        # ?test_url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke
+        response = client.get("/?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke&format=yaml")
+        data = response.content.decode("utf-8")
+        print(data)
+        assert "500" not in data
+        assert "url: https://github.com/teemtee/tmt/tree/main/tests/core/smoke/main.fmf" in data
 
     def test_basic_plan_request(self, client):
         # ?plan-url=https://github.com/teemtee/tmt&plan-name=/plans/features/basic&type=plan
@@ -37,7 +52,7 @@ class TestApi:
         # ?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke&
         # ?plan-url=https://github.com/teemtee/tmt&plan-name=/plans/features/basic&type=plan
         response = client.get("/?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke&"
-                              "?plan-url=https://github.com/teemtee/tmt&plan-name=/plans/features/basic&type=plan")
+                              "plan-url=https://github.com/teemtee/tmt&plan-name=/plans/features/basic&type=plan")
         data = response.content.decode("utf-8")
         print(data)
         assert "500" not in data
@@ -81,7 +96,7 @@ class TestCelery:
         json_data = response.json()
         while True:
             if json_data["status"] == "PENDING":
-                response = client.get("/status?task_id=" + json_data["id"])
+                response = client.get("/status?task-id=" + json_data["id"])
                 json_data = response.json()
                 time.sleep(0.1)
             elif json_data["status"] == "SUCCESS":
