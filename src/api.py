@@ -1,6 +1,8 @@
 import os
 
 from fastapi.params import Query
+from starlette.responses import HTMLResponse
+
 from src import service
 from src import html_generator
 from fastapi import FastAPI
@@ -37,26 +39,28 @@ def find_test(
     if os.environ.get("USE_CELERY") == "false":
         html_page = service.main(test_url, test_name, test_ref, plan_url, plan_name, plan_ref, out_format)
         return html_page
+    r = service.main.delay(test_url, test_name, test_ref, plan_url, plan_name, plan_ref, out_format)
     if out_format == "html":
         global format_html
         format_html = True
+        status_callback_url = f'{os.getenv("HOSTNAME")}/status?task_id={r.task_id}'
+        return HTMLResponse(content=html_generator.generate_status_callback(r, status_callback_url))
     else:
         # To set it back to False after a html format request
         format_html = False
-    r = service.main.delay(test_url, test_name, test_ref, plan_url, plan_name, plan_ref, out_format)
-    return _to_task_out(r)
+        return _to_task_out(r)
 
 
 @app.get("/status")
-def status(task_id: str) -> TaskOut:
+def status(task_id: str) -> TaskOut | HTMLResponse:
     r = service.main.app.AsyncResult(task_id)
+    if format_html:
+        status_callback_url = f'{os.getenv("HOSTNAME")}/status?task_id={r.task_id}'
+        return HTMLResponse(content=html_generator.generate_status_callback(r, status_callback_url))
     return _to_task_out(r)
 
 
 def _to_task_out(r: AsyncResult) -> TaskOut | str:
-    if format_html:
-        status_callback_url = f'{os.getenv("HOSTNAME")}/status?task_id={r.task_id}'
-        return html_generator.generate_status_callback(r, status_callback_url)
     return TaskOut(
         id=r.task_id,
         status=r.status,
