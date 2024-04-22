@@ -10,6 +10,9 @@
       - |
         command: tmt test create /tests/smoke --link verifies:https://foo.com/a/b/c
 
+    link:
+      - https://issues.redhat.com/browse/TT-262
+
 /existing-test:
     story:
         As a user I want to link an existing tmt test to a Jira issue.
@@ -24,7 +27,3 @@
         command: tmt link verifies:https://foo.com/a/b/c /plans/core
       - |
         command: tmt link verifies:https://foo.com/a/b/c /plans/core /tests/smoke
-
-    link:
-      - https://issues.redhat.com/browse/TT-262
-
