@@ -1,3 +1,4 @@
+import os
 import time
 
 import pytest
@@ -11,6 +12,11 @@ def client():
 
 
 class TestApi:
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        os.environ["USE_CELERY"] = "false"
+        os.environ["TMP_DIR_PATH"] = "../.tmp/"
+
     def test_basic_test_request(self, client):
         # ?test_url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke
         response = client.get("/?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke")
@@ -66,9 +72,12 @@ class TestApi:
 
 
 class TestCelery:
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        os.environ["USE_CELERY"] = "true"
+
     def test_basic_test_request(self, client):
         response = client.get("/?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke")
-        data = response.content.decode("utf-8")
         json_data = response.json()
         while True:
             if json_data["status"] == "PENDING":

@@ -1,16 +1,21 @@
+import os
+
 from fastapi.params import Query
 from src import service
+from src import html_generator
 from fastapi import FastAPI
 from pydantic import BaseModel
 from celery.result import AsyncResult
 
 app = FastAPI()
+format_html = False
 
 
 class TaskOut(BaseModel):
     id: str
     status: str
     result: str | None = None
+    status_callback_url: str | None = None
 
 
 # Sample url: https://tmt.org/?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke
@@ -29,7 +34,15 @@ def find_test(
         return "Invalid arguments!"
     if (plan_url is None and plan_name is not None) or (plan_url is not None and plan_name is None):
         return "Invalid arguments!"
-    # html_page = service.main(test_url, test_name, test_ref, plan_url, plan_name, plan_ref, out_format)
+    if os.environ.get("USE_CELERY") == "false":
+        html_page = service.main(test_url, test_name, test_ref, plan_url, plan_name, plan_ref, out_format)
+        return html_page
+    if out_format == "html":
+        global format_html
+        format_html = True
+    else:
+        # To set it back to False after a html format request
+        format_html = False
     r = service.main.delay(test_url, test_name, test_ref, plan_url, plan_name, plan_ref, out_format)
     return _to_task_out(r)
 
@@ -40,9 +53,13 @@ def status(task_id: str) -> TaskOut:
     return _to_task_out(r)
 
 
-def _to_task_out(r: AsyncResult) -> TaskOut:
+def _to_task_out(r: AsyncResult) -> TaskOut | str:
+    if format_html:
+        status_callback_url = f'{os.getenv("HOSTNAME")}/status?task_id={r.task_id}'
+        return html_generator.generate_status_callback(r, status_callback_url)
     return TaskOut(
         id=r.task_id,
         status=r.status,
         result=r.traceback if r.failed() else r.result,
+        status_callback_url=f'{os.getenv("HOSTNAME")}/status?task_id={r.task_id}'
     )

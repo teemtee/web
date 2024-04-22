@@ -1,5 +1,34 @@
 import tmt
+from celery.result import AsyncResult
 from tmt import Test, Logger, Plan
+
+
+def generate_status_callback(r: AsyncResult, status_callback_url: str) -> str:
+    """
+    This function generates the status callback for the HTML file
+    :param r: AsyncResult object
+    :param status_callback_url: URL for the status callback
+    :return:
+    """
+    if r.status == "PENDING":
+        return (f'''<html>
+        <head>
+        <title>HTML File</title>
+        <meta charset="UTF-8">
+        </head>
+        <body>
+        Processing... Try this url again in a few seconds: <a href="/status/{status_callback_url}">{status_callback_url}
+        </a> </body>''')
+    else:
+        return (f'''<html>
+        <head>
+        <title>HTML File</title>
+        <meta charset="UTF-8">
+        </head>
+        <body>
+        Status: {r.status}<br>
+        The result is: <br>{r.result}
+        </body>''')
 
 
 def generate_test_html_page(test: Test, logger: Logger) -> str:

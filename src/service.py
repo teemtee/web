@@ -13,6 +13,28 @@ redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
 app = Celery(__name__, broker=redis_url, backend=redis_url)
 
 
+def get_tree(url: str, name: str, ref: str) -> tmt.base.Tree:
+    """
+    This function clones the repository and returns the Tree object
+    :param ref: Object ref
+    :param name: Object name
+    :param url: Object url
+    :return:
+    """
+    logger.print("Cloning the repository for url: " + url)
+    logger.print("Parsing the url and name...")
+    logger.print("URL: " + url)
+    logger.print("Name: " + name)
+
+    utils.get_git_repository(url, logger, ref)
+
+    repo_name = url.rsplit('/', 1)[-1]
+    logger.print("Looking for tree...")
+    tree = tmt.base.Tree(path=Path(os.getenv("TMP_DIR_PATH") + repo_name), logger=logger)
+    logger.print("Tree found!", color="green")
+    return tree
+
+
 def process_test_request(test_url: str, test_name: str, test_ref: str, return_html: bool) -> str | None | tmt.Test:
     """
     This function processes the request for a test and returns the HTML file or the Test object
@@ -22,23 +44,14 @@ def process_test_request(test_url: str, test_name: str, test_ref: str, return_ht
     :param return_html: Specify if the function should return the HTML file or the Test object
     :return:
     """
-    logger.print("Cloning the repository for url: " + test_url)
-    logger.print("Parsing the url and name...")
-    logger.print("URL: " + test_url)
-    logger.print("Name: " + test_name)
 
-    utils.get_git_repository(test_url, logger, test_ref)
+    tree = get_tree(test_url, test_name, test_ref)
 
-    repo_name = test_url.rsplit('/', 1)[-1]
-    logger.print("Looking for tree...")
-    tree = tmt.base.Tree(path=Path("./.tmp/" + repo_name), logger=logger)
-    logger.print("Tree found!", color="green")
-    logger.print("Initializing the tree...")
+    logger.print("Looking for the wanted test...")
 
     test_list = tree.tests()
     wanted_test = None
     # Find the desired Test object
-    logger.print("Looking for the wanted test...")
     for test in test_list:
         if test.name == test_name:
             wanted_test = test
@@ -61,17 +74,9 @@ def process_plan_request(plan_url: str, plan_name: str, plan_ref: str, return_ht
     :param return_html: Specify if the function should return the HTML file or the Plan object
     :return:
     """
-    logger.print("Cloning the repository for url: " + plan_url)
-    logger.print("Parsing the url and name...")
-    logger.print("URL: " + plan_url)
-    logger.print("Name: " + plan_name)
 
-    utils.get_git_repository(plan_url, logger, plan_ref)
+    tree = get_tree(plan_url, plan_name, plan_ref)
 
-    repo_name = plan_url.rsplit('/', 1)[-1]
-    logger.print("Looking for tree...")
-    tree = tmt.base.Tree(path=Path("../.tmp/" + repo_name), logger=logger)
-    logger.print("Tree found!", color="green")
     logger.print("Looking for the wanted plan...")
 
     plan_list = tree.plans()
