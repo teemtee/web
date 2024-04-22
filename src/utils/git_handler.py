@@ -35,12 +35,14 @@ def clone_repository(url: str, logger: Logger, ref: str) -> None:
     logger.print("Cloning the repository...")
     path = get_path_to_repository(url)
     if check_if_repository_exists(url):
+        if ref != "default":
+            checkout_branch(ref=ref, path=path, logger=logger)
         logger.print("Repository already cloned!", color="yellow")
         raise FileExistsError
     try:
         tmt.utils.git_clone(url=url, shallow=True, destination=path, logger=logger)
         if ref != "default":
-            checkout_branch(ref, path, logger)
+            checkout_branch(ref=ref, path=path, logger=logger)
     except tmt.utils.GeneralError as e:
         logger.print("Failed to clone the repository!", color="red")
         raise Exception
@@ -56,7 +58,7 @@ def get_path_to_repository(url: str) -> Path:
     repo_name = url.rsplit('/', 1)[-1]
     path = os.path.realpath(__file__)
     path = path.replace("src/utils/git_handler.py", "")
-    path = Path(path + "/.tmp/" + repo_name)
+    path = Path(path + os.getenv("CLONE_DIR_PATH", "./.repos/") + repo_name)
     return path
 
 
@@ -80,6 +82,7 @@ def clear_tmp_dir(logger: Logger) -> None:
     path = os.path.realpath(__file__)
     path = path.replace("src/utils/git_handler.py", "")
     path = Path(path + "/.tmp")
+    # repo_name = .rsplit('/', 1)[-1]
     try:
         Popen(["rm", "-rf", path])
     except Exception as e:

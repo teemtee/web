@@ -43,7 +43,7 @@ def find_test(
     if out_format == "html":
         global format_html
         format_html = True
-        status_callback_url = f'{os.getenv("HOSTNAME")}/status?task_id={r.task_id}'
+        status_callback_url = f'/status?task_id={r.task_id}'
         return HTMLResponse(content=html_generator.generate_status_callback(r, status_callback_url))
     else:
         # To set it back to False after a html format request
@@ -55,7 +55,7 @@ def find_test(
 def status(task_id: str) -> TaskOut | HTMLResponse:
     r = service.main.app.AsyncResult(task_id)
     if format_html:
-        status_callback_url = f'{os.getenv("HOSTNAME")}/status?task_id={r.task_id}'
+        status_callback_url = f'/status?task_id={r.task_id}'
         return HTMLResponse(content=html_generator.generate_status_callback(r, status_callback_url))
     return _to_task_out(r)
 
