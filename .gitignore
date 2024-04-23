@@ -1,5 +1,5 @@
 .pytest_cache
-.tmp
+.repos
 venv
 .idea
 .vscode

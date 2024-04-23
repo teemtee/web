@@ -5,8 +5,6 @@ services:
     command: uvicorn src.api:app --reload --host 0.0.0.0 --port 8000
     environment:
       - REDIS_URL=redis://redis:6379
-      - TMP_DIR_PATH=./
-      - HOSTNAME=http://localhost:8000
     ports:
       - 8000:8000
   redis:
@@ -21,8 +19,6 @@ services:
     command: celery --app=src.api.service worker --concurrency=1 --loglevel=INFO
     environment:
       - REDIS_URL=redis://redis:6379
-      - TMP_DIR_PATH=./
-      - HOSTNAME=http://localhost:8000
     depends_on:
       - redis
 
