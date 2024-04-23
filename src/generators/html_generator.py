@@ -17,7 +17,7 @@ def generate_status_callback(r: AsyncResult, status_callback_url: str) -> str:
         <meta charset="UTF-8">
         </head>
         <body>
-        Processing... Try this clicking this url in a few seconds: <a href="{status_callback_url}">{r.task_id}
+        Processing... Try this clicking this url in a few seconds: <a href="{status_callback_url}">{status_callback_url}
         </a> </body>''')
     else:
         return (f'''<html>

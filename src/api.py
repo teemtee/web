@@ -39,6 +39,7 @@ def find_test(
         return "Invalid arguments!"
     if plan_url is None and plan_name is None and test_url is None and test_name is None:
         return "Missing arguments!"
+        # TODO: forward to docs
     # Disable Celery if not needed
     if os.environ.get("USE_CELERY") == "false":
         html_page = service.main(test_url, test_name, test_ref, plan_url, plan_name, plan_ref, out_format)
