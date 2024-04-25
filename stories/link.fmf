@@ -8,7 +8,7 @@
 
     example:
       - |
-        https://tmt.org/?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke
+        https://tmt.org/?test-url=https%3A//github.com/teemtee/tmt&test-name=/tests/core/smoke
 
     link:
       - https://issues.redhat.com/browse/TT-207
@@ -24,7 +24,7 @@
 
     example:
       - |
-        https://tmt.org/?plan-url=https://github.com/teemtee/tmt&plan-name=/plans/features/basic
+        https://tmt.org/?plan-url=https%3A//github.com/teemtee/tmt&plan-name=/plans/features/basic
 
     link:
       - https://issues.redhat.com/browse/TT-207
@@ -42,7 +42,9 @@
 
     example:
       - |
-        url-options: ?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke&?plan-url=https://github.com/teemtee/tmt&plan-name=/plans/features/basic&type=plan
+        https://tmt.org/?test-url=https%3A//github.com/teemtee/tmt&test-name=/tests/core/smoke&?plan-url=https%3A//github.com/teemtee/tmt&plan-name=/plans/features/basic&type=plan
+      - |
+        https://tmt.org/?test-name=/tests/core/smoke&plan-url=https%3A//github.com/teemtee/tmt&plan-name=/plans/features/basic
 
     link:
       - https://issues.redhat.com/browse/TT-207

@@ -2,14 +2,11 @@ story:
     As AutoMilos I want to execute relevant tests when the issue is switched to given state
 
 description:
-    Test/plan run on AutoMilos should be triggered when the issue is switched to given state.
-    The trigger should be done via the trigger-url provided in the JIRA issue. There could be the standard url for the
-    service used by AutoMilos with the additional query parameters specific to AutoMilos needs. The url should have all
-    the needed info to run the test, plan, or combination of both together in Testing farm.
+    The url should have all the needed info to run the test, plan, or combination of both together in Testing farm.
 
 example:
   - |
-    trigger-url: https://tmt.org/?url=https://github.com/teemtee/tmt&name=/tests/smoke&plan-name=/plans/features/core
+    url: https://tmt.org/?url=https://github.com/teemtee/tmt&name=/tests/smoke&plan-name=/plans/features/core
 
 link:
   - https://issues.redhat.com/browse/TT-261
