@@ -1,0 +1,31 @@
+/machine-readable:
+    story:
+        As a Testing Farm I want to get a machine readable output
+        from the service.
+
+    description: |
+        Testing Farm needs to be able to get a machine readable
+        output from the service, JSON and YAML formats will be
+        supported.
+
+/human-readable:
+    story:
+        As a user I want to get a human readable output from the
+        service.
+
+    description: |
+        After clicking on a link user will be presented a nicely
+        formatted web page with overview of the linked test, plan
+        or both test and plan. Among the information displayed
+        there will be:
+
+        * name
+        * summary
+        * description
+        * contact
+        * tag
+        * tier
+        * id
+        * link
+        * fmf identifier
+        * clickable link to the repository where metadata are defined
