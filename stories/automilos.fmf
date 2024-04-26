@@ -1,12 +1,13 @@
 story:
-    As AutoMilos I want to execute relevant tests when the issue is switched to given state
+    As AutoMilos I want to execute relevant tests when the issue
+    is switched to given state
 
 description:
-    The url should have all the needed info to run the test, plan, or combination of both together in Testing farm.
+    The url should have all the needed info to run the test, plan,
+    or combination of both together in Testing farm.
 
 example:
-  - |
-    url: https://tmt.org/?url=https://github.com/teemtee/tmt&name=/tests/smoke&plan-name=/plans/features/core
+  - https://tmt.org/?url=https://github.com/teemtee/tmt&name=/tests/smoke&plan-name=/plans/features/core
 
 link:
   - https://issues.redhat.com/browse/TT-261
