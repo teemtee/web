@@ -10,7 +10,7 @@ case $APP in
         COMMAND="uvicorn src.api:app --reload --host 0.0.0.0 --port 8000"
         ;;
     celery)
-        COMMAND="celery --app=src.api.service worker --concurrency=1 --loglevel=INFO"
+        COMMAND="celery --app=src.api.service worker --loglevel=INFO"
         ;;
     *)
         echo "Unknown app '$APP'"

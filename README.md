@@ -1,11 +1,12 @@
 # web
 Web app for checking tmt tests and plans
 # Run instructions
-1. Create a virtual environment
-2. Install the requirements
-3. Use the `start_api.sh` script to start the api
+To run the service locally for development purposes, use the following command:
+```bash
+docker-compose up --build
+```
 ## Tests
-To run the tests, use the pytest command
+To run the tests, use the `pytest` command
 # API
 API for checking tmt tests and plans metadata
 ## Version
