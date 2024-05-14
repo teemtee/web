@@ -49,14 +49,9 @@ def process_test_request(test_url: str, test_name: str, test_ref: str, return_ob
 
     logger.print("Looking for the wanted test...")
 
-    test_list = tree.tests()
-    wanted_test = None
     # Find the desired Test object
-    for test in test_list:
-        if test.name == test_name:
-            wanted_test = test
-            break
-    if wanted_test is None:
+    wanted_test = tree.tests(names=[test_name])[0]
+    if wanted_test is []:
         logger.print("Test not found!", color="red")
         return None
     logger.print("Test found!", color="green")
@@ -86,14 +81,9 @@ def process_plan_request(plan_url: str, plan_name: str, plan_ref: str, return_ob
 
     logger.print("Looking for the wanted plan...")
 
-    plan_list = tree.plans()
-    wanted_plan = None
     # Find the desired Plan object
-    for plan in plan_list:
-        if plan.name == plan_name:
-            wanted_plan = plan
-            break
-    if wanted_plan is None:
+    wanted_plan = tree.plans(names=[plan_name])[0]
+    if wanted_plan is []:
         logger.print("Plan not found!", color="red")
         return None
     logger.print("Plan found!", color="green")

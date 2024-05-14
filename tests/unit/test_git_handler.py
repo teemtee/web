@@ -58,6 +58,8 @@ class TestGitHandler:
         self.test_clone_repository_even_if_exists()
         git_handler.checkout_branch(ref="quay", path=git_handler.get_path_to_repository(
             url="https://github.com/teemtee/tmt"), logger=self.logger)
+        git_handler.checkout_branch(ref="main", path=git_handler.get_path_to_repository(
+            url="https://github.com/teemtee/tmt"), logger=self.logger)
 
     def test_checkout_branch_exception(self):
         self.test_clone_repository_even_if_exists()

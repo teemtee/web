@@ -18,7 +18,16 @@ def generate_test_yaml(test: tmt.Test, logger: Logger) -> str:
         "description": test.description,
         "url": full_url,
         "ref": test.fmf_id.ref,
-        "contact": test.contact
+        "contact": test.contact,
+        "tag": test.tag,
+        "tier": test.tier,
+        "id": test.id,
+        "fmf-id": {
+            "url": test.fmf_id.url,
+            "path": test.fmf_id.path,
+            "name": test.fmf_id.name,
+            "ref": test.fmf_id.ref,
+        }
     }
     data = tmt.utils.dict_to_yaml(data)
     logger.print("YAML file generated successfully!", color="green")
@@ -39,7 +48,17 @@ def generate_plan_yaml(plan: tmt.Plan, logger: Logger) -> str:
         "summary": plan.summary,
         "description": plan.description,
         "url": full_url,
-        "ref": plan.fmf_id.ref
+        "ref": plan.fmf_id.ref,
+        "contact": plan.contact,
+        "tag": plan.tag,
+        "tier": plan.tier,
+        "id": plan.id,
+        "fmf-id": {
+            "url": plan.fmf_id.url,
+            "path": plan.fmf_id.path,
+            "name": plan.fmf_id.name,
+            "ref": plan.fmf_id.ref,
+        }
     }
     data = tmt.utils.dict_to_yaml(data)
     logger.print("YAML file generated successfully!", color="green")
@@ -64,14 +83,33 @@ def generate_testplan_yaml(test: tmt.Test, plan: tmt.Plan, logger: Logger) -> st
             "description": test.description,
             "url": full_url_test,
             "ref": test.fmf_id.ref,
-            "contact": test.contact
+            "contact": test.contact,
+            "tag": test.tag,
+            "tier": test.tier,
+            "id": test.id,
+            "fmf-id": {
+                "url": test.fmf_id.url,
+                "path": test.fmf_id.path,
+                "name": test.fmf_id.name,
+                "ref": test.fmf_id.ref,
+            }
         },
         "plan": {
             "name": plan.name,
             "summary": plan.summary,
             "description": plan.description,
             "url": full_url_plan,
-            "ref": plan.fmf_id.ref
+            "ref": plan.fmf_id.ref,
+            "contact": plan.contact,
+            "tag": plan.tag,
+            "tier": plan.tier,
+            "id": plan.id,
+            "fmf-id": {
+                "url": plan.fmf_id.url,
+                "path": plan.fmf_id.path,
+                "name": plan.fmf_id.name,
+                "ref": plan.fmf_id.ref,
+            }
         }
     }
     data = tmt.utils.dict_to_yaml(data)
