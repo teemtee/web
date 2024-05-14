@@ -28,7 +28,7 @@ jobs:
         pip install -r src/requirements.txt
     - name: Start services
       run: |
-        docker-compose up
+        docker-compose up -d
     - name: Test
       run: |
         pytest
