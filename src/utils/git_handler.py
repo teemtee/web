@@ -1,4 +1,3 @@
-import sys
 from subprocess import Popen
 from tmt import Logger
 import os

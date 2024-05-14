@@ -53,6 +53,16 @@ def generate_test_html_page(test: Test, logger: Logger) -> str:
     url: <a href=\"{full_url}\" target=\"_blank\">{full_url}</a><br>
     ref: {test.fmf_id.ref}<br>
     contact: {test.contact}<br>
+    tag: {test.tag}<br>
+    tier: {test.tier}<br>
+    id: {test.id}<br>
+    fmf-id:<br>
+    <ul>
+      <li>url: {test.fmf_id.url}</li>
+      <li>path: {test.fmf_id.path}</li>
+      <li>name: {test.fmf_id.name}</li>
+      <li>ref: {test.fmf_id.ref}</li>
+    </ul>
     </body>
     </html>''')
     logger.print("HTML file generated successfully!", color="green")
@@ -80,6 +90,17 @@ def generate_plan_html_page(plan: Plan, logger: Logger) -> str:
     description: {plan.description}<br>
     url: <a href=\"{full_url}\" target=\"_blank\">{full_url}</a><br>
     ref: {plan.fmf_id.ref}<br>
+    contact: {plan.contact}<br>
+    tag: {plan.tag}<br>
+    tier: {plan.tier}<br>
+    id: {plan.id}<br>
+    fmf-id:<br>
+    <ul>
+      <li>url: {plan.fmf_id.url}</li>
+      <li>path: {plan.fmf_id.path}</li>
+      <li>name: {plan.fmf_id.name}</li>
+      <li>ref: {plan.fmf_id.ref}</li>
+    </ul>
     </body>
     </html>''')
     logger.print("HTML file generated successfully!", color="green")
@@ -104,18 +125,41 @@ def generate_testplan_html_page(test: tmt.Test, plan: tmt.Plan, logger: Logger) 
     <meta charset="UTF-8">
     </head> 
     <body>
+    Test metadata<br>
     name: {test.name}<br>
     summary: {test.summary}<br>
     description: {test.description}<br>
     url: <a href=\"{full_url_test}\" target=\"_blank\">{full_url_test}</a><br>
     ref: {test.fmf_id.ref}<br>
     contact: {test.contact}<br>
+    tag: {test.tag}<br>
+    tier: {test.tier}<br>
+    id: {test.id}<br>
+    fmf-id:<br>
+    <ul>
+      <li>url: {test.fmf_id.url}</li>
+      <li>path: {test.fmf_id.path}</li>
+      <li>name: {test.fmf_id.name}</li>
+      <li>ref: {test.fmf_id.ref}</li>
+    </ul>
     <br>
+    Plan metadata<br>
     name: {plan.name}<br>
     summary: {plan.summary}<br>
     description: {plan.description}<br>
     url: <a href=\"{full_url_plan}\" target=\"_blank\">{full_url_plan}</a><br>
     ref: {plan.fmf_id.ref}<br>
+    contact: {plan.contact}<br>
+    tag: {plan.tag}<br>
+    tier: {plan.tier}<br>
+    id: {plan.id}<br>
+    fmf-id:<br>
+    <ul>
+      <li>url: {plan.fmf_id.url}</li>
+      <li>path: {plan.fmf_id.path}</li>
+      <li>name: {plan.fmf_id.name}</li>
+      <li>ref: {plan.fmf_id.ref}</li>
+    </ul>
     </body>
     </html>''')
     logger.print("HTML file generated successfully!", color="green")
