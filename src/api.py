@@ -27,9 +27,11 @@ def find_test(
         test_url: str = Query(None, alias="test-url"),
         test_name: str = Query(None, alias="test-name"),
         test_ref: str = Query("default", alias="test-ref"),
+        test_path: str = Query(None, alias="test-path"),
         plan_url: str = Query(None, alias="plan-url"),
         plan_name: str = Query(None, alias="plan-name"),
         plan_ref: str = Query("default", alias="plan-ref"),
+        plan_path: str = Query(None, alias="plan-path"),
         out_format: str = Query("json", alias="format")
 ):
     # Parameter validations
@@ -42,9 +44,27 @@ def find_test(
         # TODO: forward to docs
     # Disable Celery if not needed
     if os.environ.get("USE_CELERY") == "false":
-        html_page = service.main(test_url, test_name, test_ref, plan_url, plan_name, plan_ref, out_format)
+        html_page = service.main(
+            test_url=test_url,
+            test_name=test_name,
+            test_ref=test_ref,
+            plan_url=plan_url,
+            plan_name=plan_name,
+            plan_ref=plan_ref,
+            out_format=out_format,
+            test_path=test_path,
+            plan_path=plan_path)
         return html_page
-    r = service.main.delay(test_url, test_name, test_ref, plan_url, plan_name, plan_ref, out_format)
+    r = service.main.delay(
+            test_url=test_url,
+            test_name=test_name,
+            test_ref=test_ref,
+            plan_url=plan_url,
+            plan_name=plan_name,
+            plan_ref=plan_ref,
+            out_format=out_format,
+            test_path=test_path,
+            plan_path=plan_path)
     # Special handling of response if the format is html
     if out_format == "html":
         global format_html
