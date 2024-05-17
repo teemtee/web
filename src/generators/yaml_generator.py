@@ -24,7 +24,7 @@ def generate_test_yaml(test: tmt.Test, logger: Logger) -> str:
         "id": test.id,
         "fmf-id": {
             "url": test.fmf_id.url,
-            "path": test.fmf_id.path,
+            "path": test.fmf_id.path.as_posix() if test.fmf_id.path is not None else None,
             "name": test.fmf_id.name,
             "ref": test.fmf_id.ref,
         }
@@ -55,7 +55,7 @@ def generate_plan_yaml(plan: tmt.Plan, logger: Logger) -> str:
         "id": plan.id,
         "fmf-id": {
             "url": plan.fmf_id.url,
-            "path": plan.fmf_id.path,
+            "path": plan.fmf_id.path.as_posix() if plan.fmf_id.path is not None else None,
             "name": plan.fmf_id.name,
             "ref": plan.fmf_id.ref,
         }
@@ -89,7 +89,7 @@ def generate_testplan_yaml(test: tmt.Test, plan: tmt.Plan, logger: Logger) -> st
             "id": test.id,
             "fmf-id": {
                 "url": test.fmf_id.url,
-                "path": test.fmf_id.path,
+                "path": test.fmf_id.path.as_posix() if test.fmf_id.path is not None else None,
                 "name": test.fmf_id.name,
                 "ref": test.fmf_id.ref,
             }
@@ -106,7 +106,7 @@ def generate_testplan_yaml(test: tmt.Test, plan: tmt.Plan, logger: Logger) -> st
             "id": plan.id,
             "fmf-id": {
                 "url": plan.fmf_id.url,
-                "path": plan.fmf_id.path,
+                "path": plan.fmf_id.path.as_posix() if plan.fmf_id.path is not None else None,
                 "name": plan.fmf_id.name,
                 "ref": plan.fmf_id.ref,
             }

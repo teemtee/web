@@ -59,7 +59,7 @@ def generate_test_html_page(test: Test, logger: Logger) -> str:
     fmf-id:<br>
     <ul>
       <li>url: {test.fmf_id.url}</li>
-      <li>path: {test.fmf_id.path}</li>
+      <li>path: {test.fmf_id.path.as_posix() if test.fmf_id.path is not None else None}</li>
       <li>name: {test.fmf_id.name}</li>
       <li>ref: {test.fmf_id.ref}</li>
     </ul>
@@ -97,7 +97,7 @@ def generate_plan_html_page(plan: Plan, logger: Logger) -> str:
     fmf-id:<br>
     <ul>
       <li>url: {plan.fmf_id.url}</li>
-      <li>path: {plan.fmf_id.path}</li>
+      <li>path: {plan.fmf_id.path.as_posix() if plan.fmf_id.path is not None else None}</li>
       <li>name: {plan.fmf_id.name}</li>
       <li>ref: {plan.fmf_id.ref}</li>
     </ul>
@@ -138,7 +138,7 @@ def generate_testplan_html_page(test: tmt.Test, plan: tmt.Plan, logger: Logger) 
     fmf-id:<br>
     <ul>
       <li>url: {test.fmf_id.url}</li>
-      <li>path: {test.fmf_id.path}</li>
+      <li>path: {test.fmf_id.path.as_posix() if test.fmf_id.path is not None else None}</li>
       <li>name: {test.fmf_id.name}</li>
       <li>ref: {test.fmf_id.ref}</li>
     </ul>
@@ -156,7 +156,7 @@ def generate_testplan_html_page(test: tmt.Test, plan: tmt.Plan, logger: Logger) 
     fmf-id:<br>
     <ul>
       <li>url: {plan.fmf_id.url}</li>
-      <li>path: {plan.fmf_id.path}</li>
+      <li>path: {plan.fmf_id.path.as_posix() if plan.fmf_id.path is not None else None}</li>
       <li>name: {plan.fmf_id.name}</li>
       <li>ref: {plan.fmf_id.ref}</li>
     </ul>

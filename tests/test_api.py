@@ -25,6 +25,13 @@ class TestApi:
         assert "500" not in data
         assert "https://github.com/teemtee/tmt/tree/main/tests/core/smoke/main.fmf" in data
 
+    def test_basic_test_request_json_with_path(self, client):
+        response = client.get("/?test-url=https://github.com/teemtee/tmt.git&test-name=/test/shell/weird&"
+                              "test-path=/tests/execute/basic/data&test-ref=link-issues-to-jira")
+        data = response.content.decode("utf-8")
+        assert "500" not in data
+        assert "https://github.com/teemtee/tmt/tree/main/tests/execute/basic/data/test.fmf" in data
+
     def test_basic_test_request_html(self, client):
         response = client.get(
             "/?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke&test-ref=main&format=html")
