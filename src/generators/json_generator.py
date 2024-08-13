@@ -1,7 +1,7 @@
 import json
 
 import tmt
-from tmt import Test, Logger, Plan
+from tmt import Logger, Plan, Test
 
 
 def generate_test_json(test: Test, logger: Logger) -> str:

@@ -1,8 +1,9 @@
-from subprocess import Popen
-from tmt import Logger
 import os
-import tmt.utils
 from pathlib import Path
+from subprocess import Popen
+
+import tmt.utils
+from tmt import Logger
 
 
 def checkout_branch(path: Path, logger: Logger, ref: str) -> None:

@@ -1,6 +1,6 @@
 import tmt
 from celery.result import AsyncResult
-from tmt import Test, Logger, Plan
+from tmt import Logger, Plan, Test
 
 
 def generate_status_callback(r: AsyncResult, status_callback_url: str) -> str:
