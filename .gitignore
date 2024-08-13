@@ -1,6 +1,7 @@
 .pytest_cache
 .repos
 venv
+.venv
 .idea
 .vscode
 __pycache__
