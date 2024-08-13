@@ -44,7 +44,7 @@ def find_test(
         # TODO: forward to docs
     # Disable Celery if not needed
     if os.environ.get("USE_CELERY") == "false":
-        html_page = service.main(
+        return service.main(
             test_url=test_url,
             test_name=test_name,
             test_ref=test_ref,
@@ -54,7 +54,6 @@ def find_test(
             out_format=out_format,
             test_path=test_path,
             plan_path=plan_path)
-        return html_page
     r = service.main.delay(
             test_url=test_url,
             test_name=test_name,
@@ -77,7 +76,7 @@ def find_test(
 
 
 @app.get("/status")
-def status(task_id: str = Query(None, alias="task-id")) -> TaskOut:
+def status(task_id: str = Query(None, alias="task-id")) -> TaskOut | str:
     r = service.main.app.AsyncResult(task_id)
     return _to_task_out(r)
 

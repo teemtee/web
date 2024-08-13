@@ -1,9 +1,9 @@
+import contextlib
 import os
-from pathlib import Path
-from subprocess import Popen
+from shutil import rmtree
 
-import tmt.utils
 from tmt import Logger
+from tmt.utils import Command, Common, GeneralError, Path, RunError, git_clone
 
 
 def checkout_branch(path: Path, logger: Logger, ref: str) -> None:
@@ -15,12 +15,12 @@ def checkout_branch(path: Path, logger: Logger, ref: str) -> None:
     :return:
     """
     try:
-        common_instance = tmt.utils.Common(logger=logger)
+        common_instance = Common(logger=logger)
         common_instance.run(
-            command=tmt.utils.Command('git', 'checkout', ref), cwd=path)
-    except tmt.utils.RunError:
+            command=Command('git', 'checkout', ref), cwd=path)
+    except RunError as err:
         logger.print("Failed to do checkout in the repository!", color="red")
-        raise AttributeError
+        raise AttributeError from err
 
 
 def clone_repository(url: str, logger: Logger, ref: str) -> None:
@@ -38,21 +38,21 @@ def clone_repository(url: str, logger: Logger, ref: str) -> None:
         if ref != "default":
             try:
                 checkout_branch(ref=ref, path=path, logger=logger)
-            except AttributeError:
-                raise AttributeError
+            except AttributeError as err:
+                raise AttributeError from err
         logger.print("Repository already cloned!", color="yellow")
         raise FileExistsError
     try:
-        tmt.utils.git_clone(url=url, destination=path, logger=logger)
+        git_clone(url=url, destination=path, logger=logger)
         if ref != "default":
             try:
                 checkout_branch(ref=ref, path=path, logger=logger)
-            except AttributeError:
-                raise AttributeError
+            except AttributeError as err:
+                raise AttributeError from err
             checkout_branch(ref=ref, path=path, logger=logger)
-    except tmt.utils.GeneralError as e:
+    except GeneralError as e:
         logger.print("Failed to clone the repository!", color="red")
-        raise Exception
+        raise Exception from e
     logger.print("Repository cloned successfully!", color="green")
 
 
@@ -62,11 +62,9 @@ def get_path_to_repository(url: str) -> Path:
     :param url: URL to the repository
     :return: Path to the cloned repository
     """
-    repo_name = url.rsplit('/', 1)[-1]
-    path = os.path.realpath(__file__)
-    path = path.replace("src/utils/git_handler.py", "")
-    path = Path(path + os.getenv("CLONE_DIR_PATH", "./.repos/") + repo_name)
-    return path
+    repo_name = url.rstrip('/').rsplit('/', 1)[-1]
+    root_dir = Path(__file__).resolve().parents[2]  # going up from src/utils/git_handler.py
+    return root_dir / os.getenv("CLONE_DIR_PATH", "./.repos/") / repo_name
 
 
 def check_if_repository_exists(url: str) -> bool:
@@ -75,8 +73,7 @@ def check_if_repository_exists(url: str) -> bool:
     :param url: URL to the repository
     :return: True if the repository is already cloned, False otherwise
     """
-    path = get_path_to_repository(url)
-    return path.exists()
+    return get_path_to_repository(url).exists()
 
 
 def clear_tmp_dir(logger: Logger) -> None:
@@ -86,11 +83,10 @@ def clear_tmp_dir(logger: Logger) -> None:
     :return:
     """
     logger.print("Clearing the .tmp directory...")
-    path = os.path.realpath(__file__)
-    path = path.replace("src/utils/git_handler.py", "")
-    path = Path(path + os.getenv("CLONE_DIR_PATH", "./.repos/"))
+    root_dir = Path(__file__).resolve().parents[2]  # going up from src/utils/git_handler.py
+    path = root_dir / os.getenv("CLONE_DIR_PATH", "./.repos/")
     try:
-        Popen(["rm", "-rf", path])
+        rmtree(path)
     except Exception as e:
         logger.print("Failed to clear the repository clone directory!", color="red")
         raise e
@@ -104,10 +100,8 @@ def get_git_repository(url: str, logger: Logger, ref: str) -> Path:
     :param logger: Instance of Logger
     :return: Path to the cloned repository
     """
-    try:
+    with contextlib.suppress(FileExistsError):
         clone_repository(url, logger, ref)
-    except FileExistsError:
-        pass
     return get_path_to_repository(url)
 
 

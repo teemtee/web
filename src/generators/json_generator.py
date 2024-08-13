@@ -30,9 +30,9 @@ def generate_test_json(test: Test, logger: Logger) -> str:
             "ref": test.fmf_id.ref,
         }
     }
-    data = json.dumps(data)
+    json_data = json.dumps(data)
     logger.print("JSON file generated successfully!", color="green")
-    return data
+    return json_data
 
 
 def generate_plan_json(plan: Plan, logger: Logger) -> str:
@@ -61,9 +61,9 @@ def generate_plan_json(plan: Plan, logger: Logger) -> str:
             "ref": plan.fmf_id.ref,
         }
     }
-    data = json.dumps(data)
+    json_data = json.dumps(data)
     logger.print("JSON file generated successfully!", color="green")
-    return data
+    return json_data
 
 
 def generate_testplan_json(test: tmt.Test, plan: tmt.Plan, logger: Logger) -> str:
@@ -113,6 +113,6 @@ def generate_testplan_json(test: tmt.Test, plan: tmt.Plan, logger: Logger) -> st
             }
         }
     }
-    data = json.dumps(data)
+    json_data = json.dumps(data)
     logger.print("JSON file generated successfully!", color="green")
-    return data
+    return json_data

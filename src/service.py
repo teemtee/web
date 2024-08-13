@@ -1,15 +1,15 @@
 import logging
 import os
-from pathlib import Path
 
 import tmt
 from celery.app import Celery
+from tmt.utils import Path
 
 from src.generators import html_generator as html
 from src.generators import json_generator, yaml_generator
 from src.utils import git_handler as utils
 
-logger = tmt.Logger(logging.Logger("tmt-logger"))
+logger = tmt.Logger(logging.getLogger("tmt-logger"))
 
 redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
 
@@ -33,11 +33,12 @@ def get_tree(url: str, name: str, ref: str, tree_path: str) -> tmt.base.Tree:
     path = utils.get_git_repository(url, logger, ref)
 
     if tree_path is not None:
+        tree_path += '/'
         # If path is set, construct a path to the tmt Tree
-        if '.git' == path.suffix:
+        if path.suffix == '.git':
             path = path.with_suffix('')
-        path = path.as_posix() + tree_path
-        path = Path(path)
+        path = Path(path.as_posix() + tree_path)
+
 
     logger.print("Looking for tree...")
     tree = tmt.base.Tree(path=path, logger=logger)
@@ -50,7 +51,7 @@ def process_test_request(test_url: str,
                          test_ref: str,
                          test_path: str,
                          return_object: bool,
-                         out_format: str) -> str | None | tmt.Test:
+                         out_format: str) -> str | tmt.Test | None:
     """
     This function processes the request for a test and returns the HTML file or the Test object
     :param test_url: Test url
@@ -68,7 +69,7 @@ def process_test_request(test_url: str,
 
     # Find the desired Test object
     wanted_test = tree.tests(names=[test_name])[0]
-    if wanted_test is []:
+    if wanted_test == []:
         logger.print("Test not found!", color="red")
         return None
     logger.print("Test found!", color="green")
@@ -81,6 +82,7 @@ def process_test_request(test_url: str,
             return json_generator.generate_test_json(wanted_test, logger=logger)
         case "yaml":
             return yaml_generator.generate_test_yaml(wanted_test, logger=logger)
+    return None
 
 
 def process_plan_request(plan_url: str,
@@ -106,7 +108,7 @@ def process_plan_request(plan_url: str,
 
     # Find the desired Plan object
     wanted_plan = tree.plans(names=[plan_name])[0]
-    if wanted_plan is []:
+    if wanted_plan == []:
         logger.print("Plan not found!", color="red")
         return None
     logger.print("Plan found!", color="green")
@@ -116,9 +118,10 @@ def process_plan_request(plan_url: str,
         case "html":
             return html.generate_plan_html_page(wanted_plan, logger=logger)
         case "json":
-            return json_generator.generate_plan_json(wanted_plan, logger=logger)
+            return json_generator.generate_plan_json(wanted_plan,  logger=logger)
         case "yaml":
             return yaml_generator.generate_plan_yaml(wanted_plan, logger=logger)
+    return None
 
 
 def process_testplan_request(test_url,
@@ -144,7 +147,13 @@ def process_testplan_request(test_url,
     :return:
     """
     test = process_test_request(test_url, test_name, test_ref, test_path, False, out_format)
+    if not isinstance(test, tmt.Test):
+        logger.print("Invalid test object", color="red")
+        return None
     plan = process_plan_request(plan_url, plan_name, plan_ref, plan_path, False, out_format)
+    if not isinstance(plan, tmt.Plan):
+        logger.print("Invalid plan object", color="red")
+        return None
     match out_format:
         case "html":
             return html.generate_testplan_html_page(test, plan, logger=logger)
@@ -152,6 +161,8 @@ def process_testplan_request(test_url,
             return json_generator.generate_testplan_json(test, plan, logger=logger)
         case "yaml":
             return yaml_generator.generate_testplan_yaml(test, plan, logger=logger)
+
+    return None
 
 
 @app.task
@@ -163,7 +174,7 @@ def main(test_url: str | None,
          plan_name: str | None,
          plan_ref: str | None,
          plan_path: str | None,
-         out_format: str | None) -> str | None:
+         out_format: str) -> str | tmt.Test | tmt.Plan | None:
     logger.print("Starting...", color="blue")
     if test_name is not None and plan_name is None:
         return process_test_request(test_url, test_name, test_ref, test_path, True, out_format)
@@ -172,6 +183,7 @@ def main(test_url: str | None,
     elif plan_name is not None and test_name is not None:
         return process_testplan_request(test_url, test_name, test_ref, test_path,
                                         plan_url, plan_name, plan_ref, plan_path, out_format)
+    return None
 
 
 if __name__ == "__main__":

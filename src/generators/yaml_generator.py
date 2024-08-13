@@ -28,9 +28,9 @@ def generate_test_yaml(test: tmt.Test, logger: Logger) -> str:
             "ref": test.fmf_id.ref,
         }
     }
-    data = tmt.utils.dict_to_yaml(data)
+    yaml_data = tmt.utils.dict_to_yaml(data)
     logger.print("YAML file generated successfully!", color="green")
-    return data
+    return yaml_data
 
 
 def generate_plan_yaml(plan: tmt.Plan, logger: Logger) -> str:
@@ -59,9 +59,9 @@ def generate_plan_yaml(plan: tmt.Plan, logger: Logger) -> str:
             "ref": plan.fmf_id.ref,
         }
     }
-    data = tmt.utils.dict_to_yaml(data)
+    yaml_data = tmt.utils.dict_to_yaml(data)
     logger.print("YAML file generated successfully!", color="green")
-    return data
+    return yaml_data
 
 
 def generate_testplan_yaml(test: tmt.Test, plan: tmt.Plan, logger: Logger) -> str:
@@ -111,6 +111,6 @@ def generate_testplan_yaml(test: tmt.Test, plan: tmt.Plan, logger: Logger) -> st
             }
         }
     }
-    data = tmt.utils.dict_to_yaml(data)
+    yaml_data = tmt.utils.dict_to_yaml(data)
     logger.print("YAML file generated successfully!", color="green")
-    return data
+    return yaml_data
