@@ -1,6 +1,5 @@
 import tmt
 from tmt import Logger
-from tmt import utils
 
 
 def generate_test_yaml(test: tmt.Test, logger: Logger) -> str:

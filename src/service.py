@@ -1,12 +1,13 @@
+import logging
 import os
 from pathlib import Path
 
 import tmt
-import logging
-from src.utils import git_handler as utils
-from src.generators import json_generator, html_generator as html
-from src.generators import yaml_generator
 from celery.app import Celery
+
+from src.generators import html_generator as html
+from src.generators import json_generator, yaml_generator
+from src.utils import git_handler as utils
 
 logger = tmt.Logger(logging.Logger("tmt-logger"))
 
