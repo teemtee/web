@@ -69,7 +69,7 @@ def find_test(
     if out_format == "html":
         global format_html
         format_html = True
-        status_callback_url = f'{os.getenv("API_HOSTNAME")}/status?task-id={r.task_id}&html=true'
+        status_callback_url = f'{os.getenv("API_HOSTNAME")}/status/html?task-id={r.task_id}'
         return HTMLResponse(content=html_generator.generate_status_callback(r, status_callback_url))
     else:
         format_html = False  # To set it back to False after a html format request
@@ -77,13 +77,15 @@ def find_test(
 
 
 @app.get("/status")
-def status(task_id: str = Query(None, alias="task-id"),
-           html: str = Query("false")) -> TaskOut | HTMLResponse:
+def status(task_id: str = Query(None, alias="task-id")) -> TaskOut:
     r = service.main.app.AsyncResult(task_id)
-    if html == "true":
-        status_callback_url = f'{os.getenv("API_HOSTNAME")}/status?task-id={r.task_id}&html=true'
-        return HTMLResponse(content=html_generator.generate_status_callback(r, status_callback_url))
     return _to_task_out(r)
+
+@app.get("/status/html")
+def status_html(task_id: str = Query(None, alias="task-id")) -> HTMLResponse:
+    r = service.main.app.AsyncResult(task_id)
+    status_callback_url = f'{os.getenv("API_HOSTNAME")}/status/html?task-id={r.task_id}'
+    return HTMLResponse(content=html_generator.generate_status_callback(r, status_callback_url))
 
 
 def _to_task_out(r: AsyncResult) -> TaskOut | str:
