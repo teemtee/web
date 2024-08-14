@@ -23,12 +23,13 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
-        pip install pytest
-        pip install -r src/requirements.txt
+        sudo apt-get update -y
+        sudo apt-get install podman -y
+        python -m pip install -U pip podman-compose
+        python -m pip install -r src/requirements.txt
     - name: Start services
       run: |
-        docker-compose up -d
+        podman-compose up -d
     - name: Test
       run: |
         pytest
