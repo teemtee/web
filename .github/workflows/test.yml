@@ -6,30 +6,78 @@ on:
   pull_request:
     branches: [ "main" ]
 
-permissions:
-  contents: read
-
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
+
     strategy:
       matrix:
-        python-version: [ "3.10", "3.11", "3.12" ]
+        python-version: [ "3.10", "3.12" ]
+
     steps:
-    - uses: actions/checkout@v4
+
+    - name: Check out code
+      uses: actions/checkout@v4
+
+    - name: Set up Podman and Buildah
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y podman buildah
+
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v5
       with:
-        python-version: ${{ matrix.python-version }}
-    - name: Install dependencies
+        python-version: '${{ matrix.python-version }}'
+
+    - name: Install pytest
       run: |
-        sudo apt-get update -y
-        sudo apt-get install podman -y
-        python -m pip install -U pip podman-compose
+        python -m pip install pytest
         python -m pip install -r src/requirements.txt
-    - name: Start services
+
+
+    - name: Build the web image
       run: |
-        podman-compose up -d
-    - name: Test
+        buildah bud -t tmt-web:latest --build-arg PYTHON_VERSION=${{ matrix.python-version }} .
+
+    - name: Create Podman pod
       run: |
-        pytest
+        podman pod create --name tmt-web-pod -p 8000:8000 -p 6379:6379 || true
+        # I don't even know, now it threw "docker://k8s.gcr.io/pause:3.5: Requesting bear token: invalid status code from registry 404"
+        # Exposing redis port as well for test_api.py::TestCelery::test_basic_test_request
+
+    - name: Start Redis container
+      run: |
+        podman run -d --pod tmt-web-pod --name redis redis:latest
+
+    - name: Start Celery container
+      run: |
+        podman run -d --pod tmt-web-pod --name celery \
+          -e REDIS_URL=redis://localhost:6379 \
+          -e API_HOSTNAME=http://localhost:8000 \
+          tmt-web:latest celery --app=src.api.service worker --loglevel=INFO
+
+    - name: Start Web container
+      run: |
+        podman run -d --pod tmt-web-pod --name web \
+          -e REDIS_URL=redis://localhost:6379 \
+          -e API_HOSTNAME=http://localhost:8000 \
+          tmt-web:latest uvicorn src.api:app --reload --host 0.0.0.0 --port 8000
+
+    - name: Wait for services to be ready
+      run: |
+        for i in {1..30}; do
+          if curl -s http://localhost:8000/health; then
+            break
+          fi
+          sleep 4
+        done
+
+    - name: Run tests
+      run: |
+        python -m pytest
+
+    - name: Cleanup
+      if: always()
+      run: |
+        podman pod stop tmt-web-pod
+        podman pod rm tmt-web-pod

@@ -1,4 +1,5 @@
-FROM python:3.10
+ARG PYTHON_VERSION=3.12
+FROM python:${PYTHON_VERSION}
 
 RUN mkdir /app
 WORKDIR /app
