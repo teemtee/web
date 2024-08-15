@@ -94,3 +94,7 @@ def _to_task_out(r: AsyncResult) -> TaskOut | str:
         result=r.traceback if r.failed() else r.result,
         status_callback_url=f'{os.getenv("API_HOSTNAME")}/status?task-id={r.task_id}'
     )
+
+@app.get("/health")
+def health_check():
+    return {"status": "healthy"}
