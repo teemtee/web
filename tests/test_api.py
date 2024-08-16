@@ -2,11 +2,12 @@ import os
 import time
 
 import pytest
-from src.api import app
 from fastapi.testclient import TestClient
 
+from tmt_web.api import app
 
-@pytest.fixture()
+
+@pytest.fixture
 def client():
     return TestClient(app)
 
@@ -16,7 +17,7 @@ class TestApi:
     This class tests the behaviour of the API directly
     """
     @pytest.fixture(autouse=True)
-    def setup(self):
+    def _setup(self):
         os.environ["USE_CELERY"] = "false"
 
     def test_basic_test_request_json(self, client):
@@ -38,7 +39,7 @@ class TestApi:
         data = response.content.decode("utf-8")
         print(data)
         assert "500" not in data
-        assert f'<html>' in data
+        assert '<html>' in data
 
     def test_basic_test_request_yaml(self, client):
         response = client.get("/?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke&format=yaml")
@@ -97,7 +98,7 @@ class TestCelery:
     This class tests the API with the Celery instance
     """
     @pytest.fixture(autouse=True)
-    def setup(self):
+    def _setup(self):
         os.environ["USE_CELERY"] = "true"
 
     def test_basic_test_request(self, client):
@@ -114,6 +115,6 @@ class TestCelery:
                 assert "https://github.com/teemtee/tmt/tree/main/tests/core/smoke/main.fmf" in result
                 break
             elif json_data["status"] == "FAILURE":
-                assert False
+                pytest.fail("status = FAILURE: " + json_data["result"])
             else:
-                assert False
+                pytest.fail("Unknown status: " + json_data["status"])

@@ -5,9 +5,9 @@ import tmt
 from celery.app import Celery
 from tmt.utils import Path
 
-from src.generators import html_generator as html
-from src.generators import json_generator, yaml_generator
-from src.utils import git_handler as utils
+from tmt_web.generators import html_generator as html
+from tmt_web.generators import json_generator, yaml_generator
+from tmt_web.utils import git_handler as utils
 
 logger = tmt.Logger(logging.getLogger("tmt-logger"))
 
@@ -178,9 +178,9 @@ def main(test_url: str | None,
     logger.print("Starting...", color="blue")
     if test_name is not None and plan_name is None:
         return process_test_request(test_url, test_name, test_ref, test_path, True, out_format)
-    elif plan_name is not None and test_name is None:
+    if plan_name is not None and test_name is None:
         return process_plan_request(plan_url, plan_name, plan_ref, plan_path, True, out_format)
-    elif plan_name is not None and test_name is not None:
+    if plan_name is not None and test_name is not None:
         return process_testplan_request(test_url, test_name, test_ref, test_path,
                                         plan_url, plan_name, plan_ref, plan_path, out_format)
     return None

@@ -1,16 +1,17 @@
+import contextlib
+import logging
 import os
 import time
 from pathlib import Path
 
 import pytest
 import tmt
-import logging
 
-from src.utils import git_handler
+from tmt_web.utils import git_handler
 
 
 class TestGitHandler:
-    logger = tmt.Logger(logging.Logger("tmt-logger"))
+    logger = tmt.Logger(logging.getLogger("tmt-logger"))
 
     def test_clear_tmp_dir(self):
         # Create test directory if it doesn't exist
@@ -36,23 +37,23 @@ class TestGitHandler:
         while git_handler.check_if_repository_exists("https://github.com/teemtee/tmt") is True:
             git_handler.clear_tmp_dir(self.logger)
             time.sleep(1)
-        git_handler.clone_repository(url="https://github.com/teemtee/tmt", logger=self.logger, ref="default")
+        git_handler.clone_repository(url="https://github.com/teemtee/tmt",
+                                     logger=self.logger, ref="default")
 
     def test_clone_repository_even_if_exists(self):
-        try:
-            git_handler.clone_repository(url="https://github.com/teemtee/tmt", logger=self.logger, ref="default")
-        except FileExistsError:
-            pass
+        with contextlib.suppress(FileExistsError):
+            git_handler.clone_repository(url="https://github.com/teemtee/tmt",
+                                         logger=self.logger, ref="default")
 
     def test_clone_checkout_branch(self):
-        try:
-            git_handler.clone_repository(url="https://github.com/teemtee/tmt", logger=self.logger, ref="quay")
-        except FileExistsError:
-            pass
+        with contextlib.suppress(FileExistsError):
+            git_handler.clone_repository(url="https://github.com/teemtee/tmt",
+                                         logger=self.logger, ref="quay")
 
     def test_clone_checkout_branch_exception(self):
         with pytest.raises(AttributeError):
-            git_handler.clone_repository(url="https://github.com/teemtee/tmt", logger=self.logger, ref="quadd")
+            git_handler.clone_repository(url="https://github.com/teemtee/tmt",
+                                         logger=self.logger, ref="quadd")
 
     def test_checkout_branch(self):
         self.test_clone_repository_even_if_exists()
