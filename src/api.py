@@ -1,4 +1,5 @@
 import os
+from typing import Annotated, Literal
 
 from celery.result import AsyncResult
 from fastapi import FastAPI
@@ -24,7 +25,14 @@ class TaskOut(BaseModel):
 # or for plans: https://tmt.org/?plan-url=https://github.com/teemtee/tmt&plan-name=/plans/features/basic
 @app.get("/")
 def find_test(
-        test_url: str = Query(None, alias="test-url"),
+        test_url: Annotated[
+            str | None,
+            Query(
+                alias="test-url",
+                title="Test URL",
+                description="URL of a Git repository containing test metadata",
+            ),
+        ] = None,
         test_name: str = Query(None, alias="test-name"),
         test_ref: str = Query("default", alias="test-ref"),
         test_path: str = Query(None, alias="test-path"),
@@ -32,7 +40,7 @@ def find_test(
         plan_name: str = Query(None, alias="plan-name"),
         plan_ref: str = Query("default", alias="plan-ref"),
         plan_path: str = Query(None, alias="plan-path"),
-        out_format: str = Query("json", alias="format")
+        out_format: Annotated[Literal["html", "json", "yaml"], Query(alias="format")] = "json",
 ):
     # Parameter validations
     if (test_url is None and test_name is not None) or (test_url is not None and test_name is None):
