@@ -26,7 +26,7 @@ def checkout_branch(path: Path, logger: Logger, ref: str) -> None:
 def clone_repository(url: str, logger: Logger, ref: str) -> None:
     """
     Clones the repository from the given URL.
-    Raises FileExistsError if the repository is already cloned and raises Exception if the cloning fails.
+    Raises FileExistsError if the repository is already cloned or Exception if the cloning fails.
     :param ref: Name of the ref to check out
     :param url: URL to the repository
     :param logger: Instance of Logger
@@ -63,7 +63,7 @@ def get_path_to_repository(url: str) -> Path:
     :return: Path to the cloned repository
     """
     repo_name = url.rstrip('/').rsplit('/', 1)[-1]
-    root_dir = Path(__file__).resolve().parents[2]  # going up from src/utils/git_handler.py
+    root_dir = Path(__file__).resolve().parents[2]  # going up from tmt_web/utils/git_handler.py
     return root_dir / os.getenv("CLONE_DIR_PATH", "./.repos/") / repo_name
 
 
@@ -83,7 +83,7 @@ def clear_tmp_dir(logger: Logger) -> None:
     :return:
     """
     logger.print("Clearing the .tmp directory...")
-    root_dir = Path(__file__).resolve().parents[2]  # going up from src/utils/git_handler.py
+    root_dir = Path(__file__).resolve().parents[2]  # going up from tmt_web/utils/git_handler.py
     path = root_dir / os.getenv("CLONE_DIR_PATH", "./.repos/")
     try:
         rmtree(path)

@@ -7,8 +7,8 @@ from fastapi.params import Query
 from pydantic import BaseModel
 from starlette.responses import HTMLResponse
 
-from src import service
-from src.generators import html_generator
+from tmt_web import service
+from tmt_web.generators import html_generator
 
 app = FastAPI()
 format_html = False
