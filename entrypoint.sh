@@ -7,10 +7,10 @@ APP=$1
 
 case $APP in
     uvicorn)
-        COMMAND="uvicorn src.api:app --reload --host 0.0.0.0 --port 8000"
+        COMMAND="uvicorn tmt_web.api:app --reload --host 0.0.0.0 --port 8000"
         ;;
     celery)
-        COMMAND="celery --app=src.api.service worker --loglevel=INFO"
+        COMMAND="celery --app=tmt_web.api.service worker --loglevel=INFO"
         ;;
     *)
         echo "Unknown app '$APP'"

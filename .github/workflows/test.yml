@@ -28,11 +28,12 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: '${{ matrix.python-version }}'
+        cache: 'pip'
 
     - name: Install pytest
       run: |
-        python -m pip install pytest
-        python -m pip install -r src/requirements.txt
+        python -m pip install pytest hatch
+        python -m pip install .
 
 
     - name: Build the web image
@@ -41,8 +42,7 @@ jobs:
 
     - name: Create Podman pod
       run: |
-        podman pod create --name tmt-web-pod -p 8000:8000 -p 6379:6379 || true
-        # I don't even know, now it threw "docker://k8s.gcr.io/pause:3.5: Requesting bear token: invalid status code from registry 404"
+        podman pod create --name tmt-web-pod --infra-image=registry.k8s.io/pause:3.9 -p 8000:8000 -p 6379:6379
         # Exposing redis port as well for test_api.py::TestCelery::test_basic_test_request
 
     - name: Start Redis container
@@ -54,14 +54,14 @@ jobs:
         podman run -d --pod tmt-web-pod --name celery \
           -e REDIS_URL=redis://localhost:6379 \
           -e API_HOSTNAME=http://localhost:8000 \
-          tmt-web:latest celery --app=src.api.service worker --loglevel=INFO
+          tmt-web:latest celery --app=tmt_web.api.service worker --loglevel=INFO
 
     - name: Start Web container
       run: |
         podman run -d --pod tmt-web-pod --name web \
           -e REDIS_URL=redis://localhost:6379 \
           -e API_HOSTNAME=http://localhost:8000 \
-          tmt-web:latest uvicorn src.api:app --reload --host 0.0.0.0 --port 8000
+          tmt-web:latest uvicorn tmt_web.api:app --reload --host 0.0.0.0 --port 8000
 
     - name: Wait for services to be ready
       run: |

@@ -4,4 +4,7 @@ venv
 .venv
 .idea
 .vscode
+dist
+.ruff_cache
+.mypy_chache
 __pycache__
