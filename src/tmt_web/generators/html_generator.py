@@ -3,7 +3,7 @@ from celery.result import AsyncResult
 from tmt import Logger, Plan, Test
 
 
-def generate_status_callback(r: AsyncResult, status_callback_url: str) -> str:
+def generate_status_callback(r: AsyncResult, status_callback_url: str) -> str:  # type: ignore [type-arg]
     """
     This function generates the status callback for the HTML file
     :param r: AsyncResult object
@@ -45,7 +45,7 @@ def generate_test_html_page(test: Test, logger: Logger) -> str:
     <head>
     <title>HTML File</title>
     <meta charset="UTF-8">
-    </head> 
+    </head>
     <body>
     name: {test.name}<br>
     summary: {test.summary}<br>
@@ -83,7 +83,7 @@ def generate_plan_html_page(plan: Plan, logger: Logger) -> str:
     <head>
     <title>HTML File</title>
     <meta charset="UTF-8">
-    </head> 
+    </head>
     <body>
     name: {plan.name}<br>
     summary: {plan.summary}<br>
@@ -123,7 +123,7 @@ def generate_testplan_html_page(test: tmt.Test, plan: tmt.Plan, logger: Logger) 
     <head>
     <title>HTML File</title>
     <meta charset="UTF-8">
-    </head> 
+    </head>
     <body>
     Test metadata<br>
     name: {test.name}<br>

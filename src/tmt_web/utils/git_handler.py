@@ -3,7 +3,14 @@ import os
 from shutil import rmtree
 
 from tmt import Logger
-from tmt.utils import Command, Common, GeneralError, Path, RunError, git_clone
+from tmt.utils import (  # type: ignore[attr-defined]
+    Command,
+    Common,
+    GeneralError,
+    Path,
+    RunError,
+    git_clone,
+)
 
 
 def checkout_branch(path: Path, logger: Logger, ref: str) -> None:
