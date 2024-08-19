@@ -18,7 +18,7 @@ services:
 
   celery:
     container_name: celery
-    build: 
+    build:
       context: .
       dockerfile: ./Containerfile
     command: celery --app=src.api.service worker --loglevel=INFO
@@ -27,5 +27,3 @@ services:
       - API_HOSTNAME=http://localhost:8000
     depends_on:
       - redis
-
-
