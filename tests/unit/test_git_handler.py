@@ -16,10 +16,8 @@ class TestGitHandler:
     def test_clear_tmp_dir(self):
         # Create test directory if it doesn't exist
         try:
-            path = os.path.realpath(__file__)
-            path = path.replace("tests/unit/test_git_handler.py", "")
-            path = Path(path + os.getenv("CLONE_DIR_PATH", "./.repos/"))
-            os.mkdir(path)
+            path = Path(__file__).resolve().parents[2].joinpath(os.getenv("CLONE_DIR_PATH", "./.repos/"))
+            path.mkdir(exist_ok=True)
         except FileExistsError:
             pass
         git_handler.clear_tmp_dir(self.logger)
@@ -67,5 +65,3 @@ class TestGitHandler:
         with pytest.raises(AttributeError):
             git_handler.checkout_branch(ref="quaddy", path=git_handler.get_path_to_repository(
                 url="https://github.com/teemtee/tmt"), logger=self.logger)
-
-

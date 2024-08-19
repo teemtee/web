@@ -2,8 +2,8 @@ import logging
 import os
 
 import tmt
-from celery.app import Celery
-from tmt.utils import Path
+from celery.app import Celery  # type: ignore[attr-defined]
+from tmt.utils import Path  # type: ignore[attr-defined]
 
 from tmt_web.generators import html_generator as html
 from tmt_web.generators import json_generator, yaml_generator
@@ -69,7 +69,7 @@ def process_test_request(test_url: str,
 
     # Find the desired Test object
     wanted_test = tree.tests(names=[test_name])[0]
-    if wanted_test == []:
+    if not wanted_test:
         logger.print("Test not found!", color="red")
         return None
     logger.print("Test found!", color="green")
@@ -108,7 +108,7 @@ def process_plan_request(plan_url: str,
 
     # Find the desired Plan object
     wanted_plan = tree.plans(names=[plan_name])[0]
-    if wanted_plan == []:
+    if not wanted_plan:
         logger.print("Plan not found!", color="red")
         return None
     logger.print("Plan found!", color="green")
@@ -176,10 +176,11 @@ def main(test_url: str | None,
          plan_path: str | None,
          out_format: str) -> str | tmt.Test | tmt.Plan | None:
     logger.print("Starting...", color="blue")
+    # TODO
     if test_name is not None and plan_name is None:
-        return process_test_request(test_url, test_name, test_ref, test_path, True, out_format)
+        return process_test_request(test_url, test_name, test_ref, test_path, True, out_format)  # type: ignore [arg-type]
     if plan_name is not None and test_name is None:
-        return process_plan_request(plan_url, plan_name, plan_ref, plan_path, True, out_format)
+        return process_plan_request(plan_url, plan_name, plan_ref, plan_path, True, out_format)  # type: ignore [arg-type]
     if plan_name is not None and test_name is not None:
         return process_testplan_request(test_url, test_name, test_ref, test_path,
                                         plan_url, plan_name, plan_ref, plan_path, out_format)
