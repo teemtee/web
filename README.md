@@ -42,7 +42,7 @@ and `plan-*` options together, they are not mutually exclusive.
 `test-url` and `test-name`, or `plan-url` and `plan-name` are required.
 
 ## Environment variables
-`REDIS_URL` - optional, passed to Celery on initialization as a `broker` and `backend` argument, 
+`REDIS_URL` - optional, passed to Celery on initialization as a `broker` and `backend` argument,
 default value is `redis://localhost:6379`
 
 `CLONE_DIR_PATH` - optional, specifies the path where the repositories will be cloned, default value is `./.repos/`

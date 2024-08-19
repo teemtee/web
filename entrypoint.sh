@@ -22,4 +22,3 @@ $COMMAND &
 PID=$!
 
 wait $PID
-
