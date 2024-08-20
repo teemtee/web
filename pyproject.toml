@@ -7,7 +7,7 @@ name = "tmt-web"
 dynamic = ["version"]
 description = 'Web app for checking tmt tests, plans and stories'
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.12"
 license = "MIT"
 keywords = []
 authors = [
@@ -15,8 +15,13 @@ authors = [
   { name = "Tomas Koscielniak", email = "tkosciel@redhat.com" }
 ]
 classifiers = [
+  "License :: OSI Approved :: MIT License",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3.12",
+  "Framework :: FastAPI",
+  "Framework :: Celery",
+  "Topic :: Software Development :: Testing",
+  "Operating System :: POSIX :: Linux",
 ]
 dependencies = [
   "tmt~=1.35",
