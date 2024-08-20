@@ -77,7 +77,7 @@ def process_test_request(test_url: str,
         return wanted_test
     match out_format:
         case "html":
-            return html.generate_test_html_page(wanted_test, logger=logger)
+            return html.generate_html_page(wanted_test, logger=logger)
         case "json":
             return json_generator.generate_test_json(wanted_test, logger=logger)
         case "yaml":
@@ -116,7 +116,7 @@ def process_plan_request(plan_url: str,
         return wanted_plan
     match out_format:
         case "html":
-            return html.generate_plan_html_page(wanted_plan, logger=logger)
+            return html.generate_html_page(wanted_plan, logger=logger)
         case "json":
             return json_generator.generate_plan_json(wanted_plan,  logger=logger)
         case "yaml":
