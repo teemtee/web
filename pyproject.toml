@@ -35,12 +35,25 @@ raw-options.version_scheme = "release-branch-semver"
 
 [tool.hatch.envs.dev]
 extra-dependencies = [
+  "pre-commit",
   "mypy~=1.11.1",
   "ruff~=0.5.7",
   "hatch",
+  "podman-compose",
+  "pytest",
+]
+post-install-commands = [
+  "pre-commit install",
 ]
 
-[tool.hatch.envs.dev.scripts]
+[tool.hatch.envs.test]
+extra-dependencies = [
+  "podman-compose",
+  "pytest",
+]
+
+[tool.hatch.envs.test.scripts]
+run = "podman-compose down && podman-compose up -d --build && pytest"
 check = "mypy --install-types --non-interactive src/tmt_web"
 
 [tool.ruff]
