@@ -11,7 +11,6 @@ from tmt_web import service
 from tmt_web.generators import html_generator
 
 app = FastAPI()
-format_html = False
 
 
 class TaskOut(BaseModel):
@@ -123,12 +122,9 @@ def find_test(
             plan_path=plan_path)
     # Special handling of response if the format is html
     if out_format == "html":
-        global format_html
-        format_html = True
         status_callback_url = f'{os.getenv("API_HOSTNAME")}/status/html?task-id={r.task_id}'
         return HTMLResponse(content=html_generator.generate_status_callback(r, status_callback_url))
     else:
-        format_html = False  # To set it back to False after a html format request
         return _to_task_out(r)
 
 
