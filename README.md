@@ -1,13 +1,24 @@
 # web
+
 Web app for checking tmt tests, plans and stories
-# Run instructions
+
+## Run instructions
+
 To run the service locally for development purposes, use the following command:
+
 ```bash
-docker-compose up --build
+podman-compose up --build
 ```
+
+add `-d` for the service to run in the background
+
 ## Tests
-To run the tests, use the `pytest` command
+
+To run the tests, use the `pytest` command (assuming the service is running).  
+Alternatively, if you have `hatch` installed, `hatch run test:run` command will rebuild, start the service and run the tests.
+
 ## Environment variables
+
 `REDIS_URL` - optional, passed to Celery on initialization as a `broker` and `backend` argument,
 default value is `redis://localhost:6379`
 
