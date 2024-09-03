@@ -16,7 +16,7 @@ redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
 app = Celery(__name__, broker=redis_url, backend=redis_url)
 
 
-def get_tree(url: str, name: str, ref: str, tree_path: str) -> tmt.base.Tree:
+def get_tree(url: str, name: str, ref: str | None, tree_path: str) -> tmt.base.Tree:
     """
     This function clones the repository and returns the Tree object
     :param ref: Object ref

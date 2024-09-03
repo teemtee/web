@@ -36,12 +36,12 @@ class TestGitHandler:
             git_handler.clear_tmp_dir(self.logger)
             time.sleep(1)
         git_handler.clone_repository(url="https://github.com/teemtee/tmt",
-                                     logger=self.logger, ref="default")
+                                     logger=self.logger)
 
     def test_clone_repository_even_if_exists(self):
         with contextlib.suppress(FileExistsError):
             git_handler.clone_repository(url="https://github.com/teemtee/tmt",
-                                         logger=self.logger, ref="default")
+                                         logger=self.logger)
 
     def test_clone_checkout_branch(self):
         with contextlib.suppress(FileExistsError):

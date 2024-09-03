@@ -4,7 +4,7 @@ from tmt import Logger
 from tmt_web.generators.json_generator import _create_json_data
 
 
-def print_success(logger) -> None:
+def print_success(logger: Logger) -> None:
     logger.print("YAML file generated successfully!", color="green")
 
 
