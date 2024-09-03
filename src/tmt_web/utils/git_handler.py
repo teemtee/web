@@ -23,40 +23,45 @@ def checkout_branch(path: Path, logger: Logger, ref: str) -> None:
     """
     try:
         common_instance = Common(logger=logger)
-        common_instance.run(
-            command=Command('git', 'checkout', ref), cwd=path)
+        common_instance.run(command=Command("git", "checkout", ref), cwd=path)
     except RunError as err:
         logger.print("Failed to do checkout in the repository!", color="red")
         raise AttributeError from err
 
 
-def clone_repository(url: str, logger: Logger, ref: str) -> None:
+def clone_repository(url: str, logger: Logger, ref: str | None = None) -> None:
     """
-    Clones the repository from the given URL.
+    Clones the repository from the given URL and optionally checks out a specific ref.
     Raises FileExistsError if the repository is already cloned or Exception if the cloning fails.
-    :param ref: Name of the ref to check out
     :param url: URL to the repository
     :param logger: Instance of Logger
+    :param ref: Optional name of the ref to check out
     :return:
     """
     logger.print("Cloning the repository...")
     path = get_path_to_repository(url)
+
     if check_if_repository_exists(url):
-        if ref != "default":
+        if ref:
             try:
                 checkout_branch(ref=ref, path=path, logger=logger)
+                logger.print(f"Checked out ref: {ref}", color="green")
             except AttributeError as err:
+                logger.print(f"Failed to checkout ref: {ref}", color="red")
                 raise AttributeError from err
         logger.print("Repository already cloned!", color="yellow")
         raise FileExistsError
+
     try:
         git_clone(url=url, destination=path, logger=logger)
-        if ref != "default":
+
+        if ref:
             try:
                 checkout_branch(ref=ref, path=path, logger=logger)
+                logger.print(f"Checked out ref: {ref}", color="green")
             except AttributeError as err:
+                logger.print(f"Failed to checkout ref: {ref}", color="red")
                 raise AttributeError from err
-            checkout_branch(ref=ref, path=path, logger=logger)
     except GeneralError as e:
         logger.print("Failed to clone the repository!", color="red")
         raise Exception from e
@@ -69,7 +74,7 @@ def get_path_to_repository(url: str) -> Path:
     :param url: URL to the repository
     :return: Path to the cloned repository
     """
-    repo_name = url.rstrip('/').rsplit('/', 1)[-1]
+    repo_name = url.rstrip("/").rsplit("/", 1)[-1]
     root_dir = Path(__file__).resolve().parents[2]  # going up from tmt_web/utils/git_handler.py
     return root_dir / os.getenv("CLONE_DIR_PATH", "./.repos/") / repo_name
 
@@ -100,7 +105,7 @@ def clear_tmp_dir(logger: Logger) -> None:
     logger.print("Repository clone directory cleared successfully!", color="green")
 
 
-def get_git_repository(url: str, logger: Logger, ref: str) -> Path:
+def get_git_repository(url: str, logger: Logger, ref: str | None) -> Path:
     """
     Clones the repository from the given URL and returns the path to the cloned repository.
     :param url: URL to the repository

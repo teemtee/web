@@ -45,9 +45,9 @@ def find_test(
             Query(
                 alias="test-ref",
                 title="Test reference",
-                description="Reference of the test repository (Default: default)",
+                description="Reference of the test repository",
             ),
-        ] = "default",
+        ] = None,
         test_path: Annotated[
             str | None,
             Query(
@@ -77,9 +77,9 @@ def find_test(
             Query(
                 alias="plan-ref",
                 title="Plan reference",
-                description="Reference of the plan repository (Default: default)",
+                description="Reference of the plan repository",
             ),
-        ] = "default",
+        ] = None,
         plan_path: Annotated[
             str | None,
             Query(
