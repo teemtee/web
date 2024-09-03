@@ -1,5 +1,5 @@
 # web
-Web app for checking tmt tests, plans and stories
+Web app for checking tmt tests and plans
 # Run instructions
 1. Create a virtual environment
 2. Install the requirements
