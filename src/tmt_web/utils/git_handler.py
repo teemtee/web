@@ -9,7 +9,7 @@ from tmt.utils import (  # type: ignore[attr-defined]
     GeneralError,
     Path,
     RunError,
-    git_clone,
+    git,
 )
 
 
@@ -53,7 +53,7 @@ def clone_repository(url: str, logger: Logger, ref: str | None = None) -> None:
         raise FileExistsError
 
     try:
-        git_clone(url=url, destination=path, logger=logger)
+        git.git_clone(url=url, destination=path, logger=logger)
 
         if ref:
             try:
