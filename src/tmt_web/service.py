@@ -18,7 +18,8 @@ app = Celery(__name__, broker=redis_url, backend=redis_url)
 
 def get_tree(url: str, name: str, ref: str | None, tree_path: str) -> tmt.base.Tree:
     """
-    This function clones the repository and returns the Tree object
+    This function clones the repository and returns the Tree object.
+
     :param ref: Object ref
     :param name: Object name
     :param url: Object url
@@ -52,7 +53,8 @@ def process_test_request(test_url: str,
                          return_object: bool,
                          out_format: str) -> str | tmt.Test | None:
     """
-    This function processes the request for a test and returns the HTML file or the Test object
+    This function processes the request for a test and returns the HTML file or the Test object.
+
     :param test_url: Test url
     :param test_name: Test name
     :param test_ref: Test repo ref
@@ -71,6 +73,7 @@ def process_test_request(test_url: str,
     if not wanted_test:
         logger.print("Test not found!", color="red")
         return None
+
     logger.print("Test found!", color="green")
     if not return_object:
         return wanted_test
@@ -91,7 +94,8 @@ def process_plan_request(plan_url: str,
                          return_object: bool,
                          out_format: str) -> str | None | tmt.Plan:
     """
-    This function processes the request for a plan and returns the HTML file or the Plan object
+    This function processes the request for a plan and returns the HTML file or the Plan object.
+
     :param plan_url: Plan URL
     :param plan_name: Plan name
     :param plan_ref: Plan repo ref
@@ -133,7 +137,8 @@ def process_testplan_request(test_url,
                              plan_path,
                              out_format) -> str | None:
     """
-    This function processes the request for a test and a plan and returns the HTML file
+    This function processes the request for a test and a plan and returns the HTML file.
+
     :param test_url: Test URL
     :param test_name: Test name
     :param test_ref: Test repo ref
