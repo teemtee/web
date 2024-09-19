@@ -5,8 +5,7 @@ import tmt
 from celery.app import Celery  # type: ignore[attr-defined]
 from tmt.utils import Path  # type: ignore[attr-defined]
 
-from tmt_web.generators import html_generator
-from tmt_web.generators import json_generator, yaml_generator
+from tmt_web.generators import html_generator, json_generator, yaml_generator
 from tmt_web.utils import git_handler
 
 logger = tmt.Logger(logging.getLogger("tmt-logger"))
