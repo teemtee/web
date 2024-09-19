@@ -26,10 +26,10 @@ def get_tree(url: str, name: str, ref: str | None, tree_path: str) -> tmt.base.T
     :param tree_path: Object path
     :return:
     """
-    logger.print("Cloning the repository for url: " + url)
+    logger.print(f"Cloning the repository for url: {url}")
     logger.print("Parsing the url and name...")
-    logger.print("URL: " + url)
-    logger.print("Name: " + name)
+    logger.print(f"URL: {url}")
+    logger.print(f"Name: {name}")
 
     path = git_handler.get_git_repository(url, logger, ref)
 
