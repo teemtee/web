@@ -5,9 +5,9 @@ import tmt
 from celery.app import Celery  # type: ignore[attr-defined]
 from tmt.utils import Path  # type: ignore[attr-defined]
 
-from tmt_web.generators import html_generator as html
+from tmt_web.generators import html_generator
 from tmt_web.generators import json_generator, yaml_generator
-from tmt_web.utils import git_handler as utils
+from tmt_web.utils import git_handler
 
 logger = tmt.Logger(logging.getLogger("tmt-logger"))
 
@@ -30,7 +30,7 @@ def get_tree(url: str, name: str, ref: str | None, tree_path: str) -> tmt.base.T
     logger.print("URL: " + url)
     logger.print("Name: " + name)
 
-    path = utils.get_git_repository(url, logger, ref)
+    path = git_handler.get_git_repository(url, logger, ref)
 
     if tree_path is not None:
         tree_path += '/'
@@ -38,7 +38,6 @@ def get_tree(url: str, name: str, ref: str | None, tree_path: str) -> tmt.base.T
         if path.suffix == '.git':
             path = path.with_suffix('')
         path = Path(path.as_posix() + tree_path)
-
 
     logger.print("Looking for tree...")
     tree = tmt.base.Tree(path=path, logger=logger)
@@ -77,7 +76,7 @@ def process_test_request(test_url: str,
         return wanted_test
     match out_format:
         case "html":
-            return html.generate_html_page(wanted_test, logger=logger)
+            return html_generator.generate_html_page(wanted_test, logger=logger)
         case "json":
             return json_generator.generate_test_json(wanted_test, logger=logger)
         case "yaml":
@@ -88,7 +87,7 @@ def process_test_request(test_url: str,
 def process_plan_request(plan_url: str,
                          plan_name: str,
                          plan_ref: str,
-                         plan_path:str,
+                         plan_path: str,
                          return_object: bool,
                          out_format: str) -> str | None | tmt.Plan:
     """
@@ -116,7 +115,7 @@ def process_plan_request(plan_url: str,
         return wanted_plan
     match out_format:
         case "html":
-            return html.generate_html_page(wanted_plan, logger=logger)
+            return html_generator.generate_html_page(wanted_plan, logger=logger)
         case "json":
             return json_generator.generate_plan_json(wanted_plan,  logger=logger)
         case "yaml":
@@ -156,7 +155,7 @@ def process_testplan_request(test_url,
         return None
     match out_format:
         case "html":
-            return html.generate_testplan_html_page(test, plan, logger=logger)
+            return html_generator.generate_testplan_html_page(test, plan, logger=logger)
         case "json":
             return json_generator.generate_testplan_json(test, plan, logger=logger)
         case "yaml":
