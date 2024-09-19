@@ -24,8 +24,8 @@ classifiers = [
   "Operating System :: POSIX :: Linux",
 ]
 dependencies = [
-  "tmt~=1.35",
-  "fastapi~=0.112",
+  "tmt~=1.36",
+  "fastapi~=0.115",
   "httpx~=0.27",
   "uvicorn~=0.30",
   "celery[redis]~=5.4",
@@ -41,8 +41,8 @@ raw-options.version_scheme = "release-branch-semver"
 [tool.hatch.envs.dev]
 extra-dependencies = [
   "pre-commit",
-  "mypy~=1.11.1",
-  "ruff~=0.5.7",
+  "mypy~=1.11.2",
+  "ruff~=0.6",
   "hatch",
   "podman-compose",
   "pytest",
