@@ -9,13 +9,14 @@ from tmt.utils import (  # type: ignore[attr-defined]
     GeneralError,
     Path,
     RunError,
-    git_clone,
+    git,
 )
 
 
 def checkout_branch(path: Path, logger: Logger, ref: str) -> None:
     """
     Checks out the given branch in the repository.
+
     :param ref: Name of the ref to check out
     :param path: Path to the repository
     :param logger: Instance of Logger
@@ -32,7 +33,9 @@ def checkout_branch(path: Path, logger: Logger, ref: str) -> None:
 def clone_repository(url: str, logger: Logger, ref: str | None = None) -> None:
     """
     Clones the repository from the given URL and optionally checks out a specific ref.
+
     Raises FileExistsError if the repository is already cloned or Exception if the cloning fails.
+
     :param url: URL to the repository
     :param logger: Instance of Logger
     :param ref: Optional name of the ref to check out
@@ -53,7 +56,7 @@ def clone_repository(url: str, logger: Logger, ref: str | None = None) -> None:
         raise FileExistsError
 
     try:
-        git_clone(url=url, destination=path, logger=logger)
+        git.git_clone(url=url, destination=path, logger=logger)
 
         if ref:
             try:
@@ -71,6 +74,7 @@ def clone_repository(url: str, logger: Logger, ref: str | None = None) -> None:
 def get_path_to_repository(url: str) -> Path:
     """
     Returns the path to the cloned repository from the given URL.
+
     :param url: URL to the repository
     :return: Path to the cloned repository
     """
@@ -82,6 +86,7 @@ def get_path_to_repository(url: str) -> Path:
 def check_if_repository_exists(url: str) -> bool:
     """
     Checks if the repository from the given URL is already cloned.
+
     :param url: URL to the repository
     :return: True if the repository is already cloned, False otherwise
     """
@@ -91,6 +96,7 @@ def check_if_repository_exists(url: str) -> bool:
 def clear_tmp_dir(logger: Logger) -> None:
     """
     Clears the .tmp directory.
+
     :param logger: Instance of Logger
     :return:
     """
@@ -102,18 +108,21 @@ def clear_tmp_dir(logger: Logger) -> None:
     except Exception as e:
         logger.print("Failed to clear the repository clone directory!", color="red")
         raise e
+
     logger.print("Repository clone directory cleared successfully!", color="green")
 
 
 def get_git_repository(url: str, logger: Logger, ref: str | None) -> Path:
     """
     Clones the repository from the given URL and returns the path to the cloned repository.
+
     :param url: URL to the repository
     :param logger: Instance of Logger
     :return: Path to the cloned repository
     """
     with contextlib.suppress(FileExistsError):
         clone_repository(url, logger, ref)
+
     return get_path_to_repository(url)
 
 

@@ -5,9 +5,8 @@ import tmt
 from celery.app import Celery  # type: ignore[attr-defined]
 from tmt.utils import Path  # type: ignore[attr-defined]
 
-from tmt_web.generators import html_generator as html
-from tmt_web.generators import json_generator, yaml_generator
-from tmt_web.utils import git_handler as utils
+from tmt_web.generators import html_generator, json_generator, yaml_generator
+from tmt_web.utils import git_handler
 
 logger = tmt.Logger(logging.getLogger("tmt-logger"))
 
@@ -18,19 +17,20 @@ app = Celery(__name__, broker=redis_url, backend=redis_url)
 
 def get_tree(url: str, name: str, ref: str | None, tree_path: str) -> tmt.base.Tree:
     """
-    This function clones the repository and returns the Tree object
+    This function clones the repository and returns the Tree object.
+
     :param ref: Object ref
     :param name: Object name
     :param url: Object url
     :param tree_path: Object path
     :return:
     """
-    logger.print("Cloning the repository for url: " + url)
+    logger.print(f"Cloning the repository for url: {url}")
     logger.print("Parsing the url and name...")
-    logger.print("URL: " + url)
-    logger.print("Name: " + name)
+    logger.print(f"URL: {url}")
+    logger.print(f"Name: {name}")
 
-    path = utils.get_git_repository(url, logger, ref)
+    path = git_handler.get_git_repository(url, logger, ref)
 
     if tree_path is not None:
         tree_path += '/'
@@ -38,7 +38,6 @@ def get_tree(url: str, name: str, ref: str | None, tree_path: str) -> tmt.base.T
         if path.suffix == '.git':
             path = path.with_suffix('')
         path = Path(path.as_posix() + tree_path)
-
 
     logger.print("Looking for tree...")
     tree = tmt.base.Tree(path=path, logger=logger)
@@ -53,7 +52,8 @@ def process_test_request(test_url: str,
                          return_object: bool,
                          out_format: str) -> str | tmt.Test | None:
     """
-    This function processes the request for a test and returns the HTML file or the Test object
+    This function processes the request for a test and returns the HTML file or the Test object.
+
     :param test_url: Test url
     :param test_name: Test name
     :param test_ref: Test repo ref
@@ -72,12 +72,13 @@ def process_test_request(test_url: str,
     if not wanted_test:
         logger.print("Test not found!", color="red")
         return None
+
     logger.print("Test found!", color="green")
     if not return_object:
         return wanted_test
     match out_format:
         case "html":
-            return html.generate_html_page(wanted_test, logger=logger)
+            return html_generator.generate_html_page(wanted_test, logger=logger)
         case "json":
             return json_generator.generate_test_json(wanted_test, logger=logger)
         case "yaml":
@@ -88,11 +89,12 @@ def process_test_request(test_url: str,
 def process_plan_request(plan_url: str,
                          plan_name: str,
                          plan_ref: str,
-                         plan_path:str,
+                         plan_path: str,
                          return_object: bool,
                          out_format: str) -> str | None | tmt.Plan:
     """
-    This function processes the request for a plan and returns the HTML file or the Plan object
+    This function processes the request for a plan and returns the HTML file or the Plan object.
+
     :param plan_url: Plan URL
     :param plan_name: Plan name
     :param plan_ref: Plan repo ref
@@ -116,7 +118,7 @@ def process_plan_request(plan_url: str,
         return wanted_plan
     match out_format:
         case "html":
-            return html.generate_html_page(wanted_plan, logger=logger)
+            return html_generator.generate_html_page(wanted_plan, logger=logger)
         case "json":
             return json_generator.generate_plan_json(wanted_plan,  logger=logger)
         case "yaml":
@@ -134,7 +136,8 @@ def process_testplan_request(test_url,
                              plan_path,
                              out_format) -> str | None:
     """
-    This function processes the request for a test and a plan and returns the HTML file
+    This function processes the request for a test and a plan and returns the HTML file.
+
     :param test_url: Test URL
     :param test_name: Test name
     :param test_ref: Test repo ref
@@ -156,7 +159,7 @@ def process_testplan_request(test_url,
         return None
     match out_format:
         case "html":
-            return html.generate_testplan_html_page(test, plan, logger=logger)
+            return html_generator.generate_testplan_html_page(test, plan, logger=logger)
         case "json":
             return json_generator.generate_testplan_json(test, plan, logger=logger)
         case "yaml":

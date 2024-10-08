@@ -110,16 +110,18 @@ def find_test(
             out_format=out_format,
             test_path=test_path,
             plan_path=plan_path)
+
     r = service.main.delay(
-            test_url=test_url,
-            test_name=test_name,
-            test_ref=test_ref,
-            plan_url=plan_url,
-            plan_name=plan_name,
-            plan_ref=plan_ref,
-            out_format=out_format,
-            test_path=test_path,
-            plan_path=plan_path)
+        test_url=test_url,
+        test_name=test_name,
+        test_ref=test_ref,
+        plan_url=plan_url,
+        plan_name=plan_name,
+        plan_ref=plan_ref,
+        out_format=out_format,
+        test_path=test_path,
+        plan_path=plan_path)
+
     # Special handling of response if the format is html
     if out_format == "html":
         status_callback_url = f'{os.getenv("API_HOSTNAME")}/status/html?task-id={r.task_id}'
@@ -137,6 +139,7 @@ def status(task_id: Annotated[str | None,
         ]) -> TaskOut | str:
     r = service.main.app.AsyncResult(task_id)
     return _to_task_out(r)
+
 
 @app.get("/status/html")
 def status_html(task_id: Annotated[str | None,
@@ -157,6 +160,7 @@ def _to_task_out(r: AsyncResult) -> TaskOut:  # type: ignore [type-arg]
         result=r.traceback if r.failed() else r.result,
         status_callback_url=f'{os.getenv("API_HOSTNAME")}/status?task-id={r.task_id}'
     )
+
 
 @app.get("/health")
 def health_check():

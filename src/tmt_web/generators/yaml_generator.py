@@ -10,7 +10,8 @@ def print_success(logger: Logger) -> None:
 
 def generate_test_yaml(test: tmt.Test, logger: Logger) -> str:
     """
-    This function generates an YAML file with the input data for a test
+    This function generates an YAML file with the input data for a test.
+
     :param test: Test object
     :param logger: tmt.Logger instance
     :return:
@@ -22,7 +23,8 @@ def generate_test_yaml(test: tmt.Test, logger: Logger) -> str:
 
 def generate_plan_yaml(plan: tmt.Plan, logger: Logger) -> str:
     """
-    This function generates an YAML file with the input data for a plan
+    This function generates an YAML file with the input data for a plan.
+
     :param plan: Plan object
     :param logger: tmt.Logger instance
     :return:
@@ -34,7 +36,8 @@ def generate_plan_yaml(plan: tmt.Plan, logger: Logger) -> str:
 
 def generate_testplan_yaml(test: tmt.Test, plan: tmt.Plan, logger: Logger) -> str:
     """
-    This function generates an YAML file with the input data for a test and a plan
+    This function generates an YAML file with the input data for a test and a plan.
+
     :param test: Test object
     :param plan: Plan object
     :param logger: tmt.Logger instance
