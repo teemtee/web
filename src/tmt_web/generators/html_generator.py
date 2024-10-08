@@ -31,7 +31,3 @@ def generate_html_page(obj: Test | Plan, logger: Logger) -> str:
 def generate_testplan_html_page(test: Test, plan: Plan, logger: Logger) -> str:
     logger.print("Generating the HTML file...")
     return render_template("testandplan.html.j2", test=test, plan=plan)
-
-
-if __name__ == "__main__":
-    print("This is not an executable file!")

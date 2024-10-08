@@ -188,7 +188,3 @@ def main(test_url: str | None,
         return process_testplan_request(test_url, test_name, test_ref, test_path,
                                         plan_url, plan_name, plan_ref, plan_path, out_format)
     return None
-
-
-if __name__ == "__main__":
-    print("This is not executable file!")

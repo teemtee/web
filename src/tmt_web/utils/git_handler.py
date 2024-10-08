@@ -124,7 +124,3 @@ def get_git_repository(url: str, logger: Logger, ref: str | None) -> Path:
         clone_repository(url, logger, ref)
 
     return get_path_to_repository(url)
-
-
-if __name__ == "__main__":
-    print("This is not executable file!")
