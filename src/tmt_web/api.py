@@ -98,29 +98,24 @@ def find_test(
     if plan_url is None and plan_name is None and test_url is None and test_name is None:
         return "Missing arguments!"
         # TODO: forward to docs
+
+    service_args = {
+        "test_url": test_url,
+        "test_name": test_name,
+        "test_ref": test_ref,
+        "plan_url": plan_url,
+        "plan_name": plan_name,
+        "plan_ref": plan_ref,
+        "out_format": out_format,
+        "test_path": test_path,
+        "plan_path": plan_path,
+    }
+
     # Disable Celery if not needed
     if os.environ.get("USE_CELERY") == "false":
-        return service.main(
-            test_url=test_url,
-            test_name=test_name,
-            test_ref=test_ref,
-            plan_url=plan_url,
-            plan_name=plan_name,
-            plan_ref=plan_ref,
-            out_format=out_format,
-            test_path=test_path,
-            plan_path=plan_path)
+        return service.main(**service_args)
 
-    r = service.main.delay(
-        test_url=test_url,
-        test_name=test_name,
-        test_ref=test_ref,
-        plan_url=plan_url,
-        plan_name=plan_name,
-        plan_ref=plan_ref,
-        out_format=out_format,
-        test_path=test_path,
-        plan_path=plan_path)
+    r = service.main.delay(**service_args)
 
     # Special handling of response if the format is html
     if out_format == "html":
