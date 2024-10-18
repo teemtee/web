@@ -35,7 +35,7 @@ def generate_test_json(test: tmt.Test, logger: tmt.Logger) -> str:
 
     :param test: Test object
     :param logger: tmt.Logger instance
-    :return:
+    :return: JSON data for a given test
     """
     data = _create_json_data(test, logger)
     logger.print("Generating the JSON file...")
@@ -48,7 +48,7 @@ def generate_plan_json(plan: tmt.Plan, logger: tmt.Logger) -> str:
 
     :param plan: Plan object
     :param logger: tmt.Logger instance
-    :return:
+    :return: JSON data for a given plan
     """
     data = _create_json_data(plan, logger)
     logger.print("Generating the JSON file...")
@@ -62,7 +62,7 @@ def generate_testplan_json(test: tmt.Test, plan: tmt.Plan, logger: tmt.Logger) -
     :param test: Test object
     :param plan: Plan object
     :param logger: tmt.Logger instance
-    :return:
+    :return: JSON data for a given test and plan
     """
     logger.print("Generating the JSON file...")
     data = {

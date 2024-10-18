@@ -23,7 +23,7 @@ def get_tree(url: str, name: str, ref: str | None, tree_path: str) -> tmt.base.T
     :param name: Object name
     :param url: Object url
     :param tree_path: Object path
-    :return:
+    :return: returns a Tree object
     """
     logger.print(f"Cloning the repository for url: {url}")
     logger.print("Parsing the url and name...")
@@ -52,7 +52,8 @@ def process_test_request(test_url: str,
                          return_object: bool,
                          out_format: str) -> str | tmt.Test | None:
     """
-    This function processes the request for a test and returns the HTML file or the Test object.
+    This function processes the request for a test and returns the data in specified output format
+    or the Test object.
 
     :param test_url: Test url
     :param test_name: Test name
@@ -60,7 +61,7 @@ def process_test_request(test_url: str,
     :param test_path: Test path
     :param return_object: Specify if the function should return the HTML file or the Test object
     :param out_format: Specifies output format
-    :return:
+    :return: the data in specified output format or the Test object
     """
 
     tree = get_tree(test_url, test_name, test_ref, test_path)
@@ -93,7 +94,8 @@ def process_plan_request(plan_url: str,
                          return_object: bool,
                          out_format: str) -> str | None | tmt.Plan:
     """
-    This function processes the request for a plan and returns the HTML file or the Plan object.
+    This function processes the request for a plan and returns the data in specified output format
+    or the Plan object.
 
     :param plan_url: Plan URL
     :param plan_name: Plan name
@@ -101,7 +103,7 @@ def process_plan_request(plan_url: str,
     :param plan_path: Plan path
     :param return_object: Specify if the function should return the HTML file or the Plan object
     :param out_format: Specifies output format
-    :return:
+    :return: the data in specified output format  or the Plan object
     """
 
     tree = get_tree(plan_url, plan_name, plan_ref, plan_path)
@@ -147,7 +149,7 @@ def process_testplan_request(test_url,
     :param plan_ref: Plan repo ref
     :param plan_path: Plan path
     :param out_format: Specifies output format
-    :return:
+    :return: page data in specified output format
     """
     test = process_test_request(test_url, test_name, test_ref, test_path, False, out_format)
     if not isinstance(test, tmt.Test):
