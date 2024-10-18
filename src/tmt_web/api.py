@@ -126,8 +126,8 @@ def find_test(
     if out_format == "html":
         status_callback_url = f"{settings.API_HOSTNAME}/status/html?task-id={r.task_id}"
         return HTMLResponse(content=html_generator.generate_status_callback(r, status_callback_url))
-    else:
-        return _to_task_out(r)
+
+    return _to_task_out(r)
 
 
 @app.get("/status")
