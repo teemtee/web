@@ -6,5 +6,5 @@ venv
 .vscode
 dist
 .ruff_cache
-.mypy_chache
+.mypy_cache
 __pycache__
