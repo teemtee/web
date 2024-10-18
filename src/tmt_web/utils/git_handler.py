@@ -1,5 +1,4 @@
 import contextlib
-import os
 from shutil import rmtree
 
 from tmt import Logger
@@ -11,6 +10,8 @@ from tmt.utils import (  # type: ignore[attr-defined]
     RunError,
     git,
 )
+
+from tmt_web import settings
 
 
 def checkout_branch(path: Path, logger: Logger, ref: str) -> None:
@@ -78,7 +79,7 @@ def get_path_to_repository(url: str) -> Path:
     """
     repo_name = url.rstrip("/").rsplit("/", 1)[-1]
     root_dir = Path(__file__).resolve().parents[2]  # going up from tmt_web/utils/git_handler.py
-    return root_dir / os.getenv("CLONE_DIR_PATH", "./.repos/") / repo_name
+    return root_dir / settings.CLONE_DIR_PATH / repo_name
 
 
 def check_if_repository_exists(url: str) -> bool:
@@ -99,7 +100,7 @@ def clear_tmp_dir(logger: Logger) -> None:
     """
     logger.print("Clearing the .tmp directory...")
     root_dir = Path(__file__).resolve().parents[2]  # going up from tmt_web/utils/git_handler.py
-    path = root_dir / os.getenv("CLONE_DIR_PATH", "./.repos/")
+    path = root_dir / settings.CLONE_DIR_PATH
     try:
         rmtree(path)
     except Exception as e:

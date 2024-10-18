@@ -7,7 +7,7 @@ from fastapi.params import Query
 from pydantic import BaseModel
 from starlette.responses import HTMLResponse
 
-from tmt_web import service
+from tmt_web import service, settings
 from tmt_web.generators import html_generator
 
 app = FastAPI()
@@ -124,7 +124,7 @@ def find_test(
 
     # Special handling of response if the format is html
     if out_format == "html":
-        status_callback_url = f'{os.getenv("API_HOSTNAME")}/status/html?task-id={r.task_id}'
+        status_callback_url = f"{settings.API_HOSTNAME}/status/html?task-id={r.task_id}"
         return HTMLResponse(content=html_generator.generate_status_callback(r, status_callback_url))
     else:
         return _to_task_out(r)
@@ -149,7 +149,7 @@ def status_html(task_id: Annotated[str | None,
             )
         ]) -> HTMLResponse:
     r = service.main.app.AsyncResult(task_id)
-    status_callback_url = f'{os.getenv("API_HOSTNAME")}/status/html?task-id={r.task_id}'
+    status_callback_url = f"{settings.API_HOSTNAME}/status/html?task-id={r.task_id}"
     return HTMLResponse(content=html_generator.generate_status_callback(r, status_callback_url))
 
 
@@ -158,7 +158,7 @@ def _to_task_out(r: AsyncResult) -> TaskOut:  # type: ignore [type-arg]
         id=r.task_id,
         status=r.status,
         result=r.traceback if r.failed() else r.result,
-        status_callback_url=f'{os.getenv("API_HOSTNAME")}/status?task-id={r.task_id}'
+        status_callback_url="{settings.API_HOSTNAME}/status?task-id={r.task_id}",
     )
 
 

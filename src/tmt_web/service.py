@@ -1,18 +1,16 @@
 import logging
-import os
 
 import tmt
 from celery.app import Celery  # type: ignore[attr-defined]
 from tmt.utils import Path  # type: ignore[attr-defined]
 
+from tmt_web import settings
 from tmt_web.generators import html_generator, json_generator, yaml_generator
 from tmt_web.utils import git_handler
 
 logger = tmt.Logger(logging.getLogger("tmt-logger"))
 
-redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
-
-app = Celery(__name__, broker=redis_url, backend=redis_url)
+app = Celery(__name__, broker=settings.REDIS_URL, backend=settings.REDIS_URL)
 
 
 def get_tree(url: str, name: str, ref: str | None, tree_path: str) -> tmt.base.Tree:
