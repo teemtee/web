@@ -5,7 +5,7 @@ from celery.result import AsyncResult
 from fastapi import FastAPI
 from fastapi.params import Query
 from pydantic import BaseModel
-from starlette.responses import HTMLResponse
+from starlette.responses import HTMLResponse, JSONResponse, PlainTextResponse
 
 from tmt_web import service, settings
 from tmt_web.generators import html_generator
@@ -113,11 +113,19 @@ def find_test(
 
     # Disable Celery if not needed
     if os.environ.get("USE_CELERY") == "false":
-        return service.main(**service_args)
+        response_by_output = {
+            "html": HTMLResponse,
+            "json": JSONResponse,
+            "yaml": PlainTextResponse,
+        }
+
+        response = response_by_output.get(out_format, PlainTextResponse)
+        return response(service.main(**service_args))
 
     r = service.main.delay(**service_args)
 
     # Special handling of response if the format is html
+    # TODO: Shouldn't be the "yaml" format also covered with a `PlainTextResponse`?
     if out_format == "html":
         status_callback_url = f"{settings.API_HOSTNAME}/status/html?task-id={r.task_id}"
         return HTMLResponse(content=html_generator.generate_status_callback(r, status_callback_url))
