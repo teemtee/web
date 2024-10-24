@@ -5,9 +5,9 @@ from celery.result import AsyncResult
 from fastapi import FastAPI
 from fastapi.params import Query
 from pydantic import BaseModel
-from starlette.responses import HTMLResponse
+from starlette.responses import HTMLResponse, JSONResponse, PlainTextResponse
 
-from tmt_web import service
+from tmt_web import service, settings
 from tmt_web.generators import html_generator
 
 app = FastAPI()
@@ -98,36 +98,39 @@ def find_test(
     if plan_url is None and plan_name is None and test_url is None and test_name is None:
         return "Missing arguments!"
         # TODO: forward to docs
+
+    service_args = {
+        "test_url": test_url,
+        "test_name": test_name,
+        "test_ref": test_ref,
+        "plan_url": plan_url,
+        "plan_name": plan_name,
+        "plan_ref": plan_ref,
+        "out_format": out_format,
+        "test_path": test_path,
+        "plan_path": plan_path,
+    }
+
     # Disable Celery if not needed
     if os.environ.get("USE_CELERY") == "false":
-        return service.main(
-            test_url=test_url,
-            test_name=test_name,
-            test_ref=test_ref,
-            plan_url=plan_url,
-            plan_name=plan_name,
-            plan_ref=plan_ref,
-            out_format=out_format,
-            test_path=test_path,
-            plan_path=plan_path)
+        response_by_output = {
+            "html": HTMLResponse,
+            "json": JSONResponse,
+            "yaml": PlainTextResponse,
+        }
 
-    r = service.main.delay(
-        test_url=test_url,
-        test_name=test_name,
-        test_ref=test_ref,
-        plan_url=plan_url,
-        plan_name=plan_name,
-        plan_ref=plan_ref,
-        out_format=out_format,
-        test_path=test_path,
-        plan_path=plan_path)
+        response = response_by_output.get(out_format, PlainTextResponse)
+        return response(service.main(**service_args))
+
+    r = service.main.delay(**service_args)
 
     # Special handling of response if the format is html
+    # TODO: Shouldn't be the "yaml" format also covered with a `PlainTextResponse`?
     if out_format == "html":
-        status_callback_url = f'{os.getenv("API_HOSTNAME")}/status/html?task-id={r.task_id}'
+        status_callback_url = f"{settings.API_HOSTNAME}/status/html?task-id={r.task_id}"
         return HTMLResponse(content=html_generator.generate_status_callback(r, status_callback_url))
-    else:
-        return _to_task_out(r)
+
+    return _to_task_out(r)
 
 
 @app.get("/status")
@@ -149,7 +152,7 @@ def status_html(task_id: Annotated[str | None,
             )
         ]) -> HTMLResponse:
     r = service.main.app.AsyncResult(task_id)
-    status_callback_url = f'{os.getenv("API_HOSTNAME")}/status/html?task-id={r.task_id}'
+    status_callback_url = f"{settings.API_HOSTNAME}/status/html?task-id={r.task_id}"
     return HTMLResponse(content=html_generator.generate_status_callback(r, status_callback_url))
 
 
@@ -158,7 +161,7 @@ def _to_task_out(r: AsyncResult) -> TaskOut:  # type: ignore [type-arg]
         id=r.task_id,
         status=r.status,
         result=r.traceback if r.failed() else r.result,
-        status_callback_url=f'{os.getenv("API_HOSTNAME")}/status?task-id={r.task_id}'
+        status_callback_url="{settings.API_HOSTNAME}/status?task-id={r.task_id}",
     )
 
 

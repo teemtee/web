@@ -1,5 +1,4 @@
 import contextlib
-import os
 from shutil import rmtree
 
 from tmt import Logger
@@ -12,6 +11,8 @@ from tmt.utils import (  # type: ignore[attr-defined]
     git,
 )
 
+from tmt_web import settings
+
 
 def checkout_branch(path: Path, logger: Logger, ref: str) -> None:
     """
@@ -20,7 +21,6 @@ def checkout_branch(path: Path, logger: Logger, ref: str) -> None:
     :param ref: Name of the ref to check out
     :param path: Path to the repository
     :param logger: Instance of Logger
-    :return:
     """
     try:
         common_instance = Common(logger=logger)
@@ -39,7 +39,6 @@ def clone_repository(url: str, logger: Logger, ref: str | None = None) -> None:
     :param url: URL to the repository
     :param logger: Instance of Logger
     :param ref: Optional name of the ref to check out
-    :return:
     """
     logger.print("Cloning the repository...")
     path = get_path_to_repository(url)
@@ -80,7 +79,7 @@ def get_path_to_repository(url: str) -> Path:
     """
     repo_name = url.rstrip("/").rsplit("/", 1)[-1]
     root_dir = Path(__file__).resolve().parents[2]  # going up from tmt_web/utils/git_handler.py
-    return root_dir / os.getenv("CLONE_DIR_PATH", "./.repos/") / repo_name
+    return root_dir / settings.CLONE_DIR_PATH / repo_name
 
 
 def check_if_repository_exists(url: str) -> bool:
@@ -98,11 +97,10 @@ def clear_tmp_dir(logger: Logger) -> None:
     Clears the .tmp directory.
 
     :param logger: Instance of Logger
-    :return:
     """
     logger.print("Clearing the .tmp directory...")
     root_dir = Path(__file__).resolve().parents[2]  # going up from tmt_web/utils/git_handler.py
-    path = root_dir / os.getenv("CLONE_DIR_PATH", "./.repos/")
+    path = root_dir / settings.CLONE_DIR_PATH
     try:
         rmtree(path)
     except Exception as e:

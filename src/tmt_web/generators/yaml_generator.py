@@ -14,7 +14,7 @@ def generate_test_yaml(test: tmt.Test, logger: Logger) -> str:
 
     :param test: Test object
     :param logger: tmt.Logger instance
-    :return:
+    :return: YAML data for a given test
     """
     yaml_data = tmt.utils.dict_to_yaml(_create_json_data(test, logger))
     print_success(logger)
@@ -27,7 +27,7 @@ def generate_plan_yaml(plan: tmt.Plan, logger: Logger) -> str:
 
     :param plan: Plan object
     :param logger: tmt.Logger instance
-    :return:
+    :return: YAML data for a given plan.
     """
     yaml_data = tmt.utils.dict_to_yaml(_create_json_data(plan, logger))
     print_success(logger)
@@ -41,7 +41,7 @@ def generate_testplan_yaml(test: tmt.Test, plan: tmt.Plan, logger: Logger) -> st
     :param test: Test object
     :param plan: Plan object
     :param logger: tmt.Logger instance
-    :return:
+    :return: YAML data for a given test and plan
     """
     data = {
         "test": _create_json_data(test, logger),
