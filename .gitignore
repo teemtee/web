@@ -1,6 +1,10 @@
 .pytest_cache
-.tmp
+.repos
 venv
+.venv
 .idea
 .vscode
+dist
+.ruff_cache
+.mypy_cache
 __pycache__

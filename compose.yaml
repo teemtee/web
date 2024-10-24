@@ -1,0 +1,29 @@
+services:
+  web:
+    container_name: uvicorn
+    build:
+      context: .
+      dockerfile: ./Containerfile
+    command: uvicorn src.api:app --reload --host 0.0.0.0 --port 8000
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - API_HOSTNAME=http://localhost:8000
+    ports:
+      - 8000:8000
+  redis:
+    container_name: redis
+    image: redis:latest
+    ports:
+      - 6379:6379
+
+  celery:
+    container_name: celery
+    build:
+      context: .
+      dockerfile: ./Containerfile
+    command: celery --app=src.api.service worker --loglevel=INFO
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - API_HOSTNAME=http://localhost:8000
+    depends_on:
+      - redis
