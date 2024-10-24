@@ -12,6 +12,12 @@ podman-compose up --build
 
 Add `-d` for the service to run in the background.
 
+In order to quickly experiment without using Celery use this:
+
+```bash
+USE_CELERY=false CLONE_DIR_PATH=/tmp/test uvicorn api:app --reload --host 0.0.0.0 --port 8000
+```
+
 ## Tests
 
 To run the tests, use the `pytest` command (assuming the service is running).
