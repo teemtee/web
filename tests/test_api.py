@@ -42,7 +42,7 @@ class TestApi:
         data = response.content.decode("utf-8")
         print(data)
         assert "500" not in data
-        assert '<html>' in data
+        assert '<html lang="en">' in data
 
     def test_basic_test_request_yaml(self, client):
         response = client.get("/?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke&format=yaml")
