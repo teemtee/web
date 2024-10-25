@@ -2,10 +2,11 @@ import os
 from typing import Annotated, Any, Literal
 
 from celery.result import AsyncResult
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, status
 from fastapi.params import Query
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 from pydantic import BaseModel
-from starlette.responses import HTMLResponse, JSONResponse, PlainTextResponse
+from tmt.utils import GeneralError
 
 from tmt_web import service, settings
 from tmt_web.generators import html_generator
@@ -18,6 +19,15 @@ class TaskOut(BaseModel):
     status: str
     result: str | None = None
     status_callback_url: str | None = None
+
+
+@app.exception_handler(GeneralError)
+async def general_exception_handler(request: Request, exc: GeneralError):
+    """Global exception handler for all TMT errors"""
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": str(exc)},
+    )
 
 
 # Sample url: https://tmt.org/?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke
@@ -92,12 +102,11 @@ def find_test(
 ) -> TaskOut | str | Any:
     # Parameter validations
     if (test_url is None and test_name is not None) or (test_url is not None and test_name is None):
-        return "Invalid arguments!"
+        raise GeneralError("Both test-url and test-name must be provided together")
     if (plan_url is None and plan_name is not None) or (plan_url is not None and plan_name is None):
-        return "Invalid arguments!"
+        raise GeneralError("Both plan-url and plan-name must be provided together")
     if plan_url is None and plan_name is None and test_url is None and test_name is None:
-        return "Missing arguments!"
-        # TODO: forward to docs
+        raise GeneralError("At least one of test or plan parameters must be provided")
 
     service_args = {
         "test_url": test_url,
@@ -134,23 +143,29 @@ def find_test(
 
 
 @app.get("/status")
-def status(task_id: Annotated[str | None,
+def get_task_status(task_id: Annotated[str | None,
             Query(
                 alias="task-id",
                 title="Task ID",
             )
         ]) -> TaskOut | str:
+    if task_id is None:
+        raise GeneralError("task-id is required")
+
     r = service.main.app.AsyncResult(task_id)
     return _to_task_out(r)
 
 
 @app.get("/status/html")
-def status_html(task_id: Annotated[str | None,
+def get_task_status_html(task_id: Annotated[str | None,
             Query(
                 alias="task-id",
                 title="Task ID",
             )
         ]) -> HTMLResponse:
+    if task_id is None:
+        raise GeneralError("task-id is required")
+
     r = service.main.app.AsyncResult(task_id)
     status_callback_url = f"{settings.API_HOSTNAME}/status/html?task-id={r.task_id}"
     return HTMLResponse(content=html_generator.generate_status_callback(r, status_callback_url))
@@ -161,7 +176,7 @@ def _to_task_out(r: AsyncResult) -> TaskOut:  # type: ignore [type-arg]
         id=r.task_id,
         status=r.status,
         result=r.traceback if r.failed() else r.result,
-        status_callback_url="{settings.API_HOSTNAME}/status?task-id={r.task_id}",
+        status_callback_url=f"{settings.API_HOSTNAME}/status?task-id={r.task_id}",
     )
 
 
