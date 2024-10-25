@@ -1,4 +1,3 @@
-import json
 import logging
 
 import pytest
@@ -6,6 +5,7 @@ import tmt
 from tmt.utils import GeneralError
 
 from tmt_web.generators import json_generator
+from tmt_web.generators.json_generator import FmfIdModel, ObjectModel, TestAndPlanModel
 
 
 @pytest.fixture
@@ -24,97 +24,91 @@ def plan_obj(logger):
 
 
 class TestJsonGenerator:
+    """Test JSON generation for tests and plans."""
+
     def test_generate_test_json(self, test_obj, logger):
+        """Test generating JSON for a test object."""
         data = json_generator.generate_test_json(test_obj, logger)
-        parsed = json.loads(data)
+        parsed = ObjectModel.model_validate_json(data)
 
-        # Check basic structure
-        assert isinstance(parsed, dict)
-        assert parsed["name"] == "/tests/data/sample_test"
-        assert parsed["summary"] == "Concise summary describing what the test does"
-
-        # Check types
-        assert isinstance(parsed["contact"], list)
-        assert isinstance(parsed["tag"], list)
-        assert isinstance(parsed.get("summary"), str | type(None))
-        assert isinstance(parsed.get("description"), str | type(None))
+        # Check content
+        assert parsed.name == "/tests/data/sample_test"
+        assert parsed.summary == "Concise summary describing what the test does"
+        assert parsed.url == test_obj.web_link()
 
         # Check fmf-id structure
-        fmf_id = parsed["fmf-id"]
-        assert isinstance(fmf_id, dict)
-        assert isinstance(fmf_id["name"], str)
-        assert isinstance(fmf_id.get("url"), str | type(None))
-        assert isinstance(fmf_id.get("path"), str | type(None))
-        assert isinstance(fmf_id.get("ref"), str | type(None))
+        assert isinstance(parsed.fmf_id, FmfIdModel)
+        assert parsed.fmf_id.name == test_obj.fmf_id.name
+        assert parsed.fmf_id.url == test_obj.fmf_id.url
 
     def test_generate_plan_json(self, plan_obj, logger):
+        """Test generating JSON for a plan object."""
         data = json_generator.generate_plan_json(plan_obj, logger)
-        parsed = json.loads(data)
+        parsed = ObjectModel.model_validate_json(data)
 
-        # Check basic structure
-        assert isinstance(parsed, dict)
-        assert parsed["name"] == "/tests/data/sample_plan"
-
-        # Check types
-        assert isinstance(parsed["contact"], list)
-        assert isinstance(parsed["tag"], list)
-        assert isinstance(parsed.get("summary"), str | type(None))
-        assert isinstance(parsed.get("description"), str | type(None))
+        # Check content
+        assert parsed.name == "/tests/data/sample_plan"
+        assert parsed.url == plan_obj.web_link()
 
         # Check fmf-id structure
-        fmf_id = parsed["fmf-id"]
-        assert isinstance(fmf_id, dict)
-        assert isinstance(fmf_id["name"], str)
-        assert isinstance(fmf_id.get("url"), str | type(None))
-        assert isinstance(fmf_id.get("path"), str | type(None))
-        assert isinstance(fmf_id.get("ref"), str | type(None))
+        assert isinstance(parsed.fmf_id, FmfIdModel)
+        assert parsed.fmf_id.name == plan_obj.fmf_id.name
+        assert parsed.fmf_id.url == plan_obj.fmf_id.url
 
     def test_generate_testplan_json(self, test_obj, plan_obj, logger):
+        """Test generating JSON for combined test and plan."""
         data = json_generator.generate_testplan_json(test_obj, plan_obj, logger)
-        parsed = json.loads(data)
-
-        # Check structure
-        assert isinstance(parsed, dict)
-        assert "test" in parsed
-        assert "plan" in parsed
+        parsed = TestAndPlanModel.model_validate_json(data)
 
         # Check test object
-        test_data = parsed["test"]
-        assert test_data["name"] == "/tests/data/sample_test"
-        assert isinstance(test_data["fmf-id"], dict)
+        assert parsed.test.name == "/tests/data/sample_test"
+        assert isinstance(parsed.test.fmf_id, FmfIdModel)
 
         # Check plan object
-        plan_data = parsed["plan"]
-        assert plan_data["name"] == "/tests/data/sample_plan"
-        assert isinstance(plan_data["fmf-id"], dict)
+        assert parsed.plan.name == "/tests/data/sample_plan"
+        assert isinstance(parsed.plan.fmf_id, FmfIdModel)
 
     def test_json_serialization_error(self, test_obj, logger, monkeypatch):
-        """Test error handling when JSON serialization fails"""
-        class UnserializableObject:
-            pass
+        """Test error handling when JSON serialization fails."""
+        def mock_model_dump_json(*args, **kwargs):
+            raise ValueError("JSON serialization failed")
 
-        def mock_create_data(*args, **kwargs):
-            return {"bad_field": UnserializableObject()}
-
-        monkeypatch.setattr(json_generator, '_create_json_data', mock_create_data)
+        monkeypatch.setattr(ObjectModel, 'model_dump_json', mock_model_dump_json)
 
         with pytest.raises(GeneralError) as exc:
             json_generator.generate_test_json(test_obj, logger)
         assert "Failed to generate JSON output" in str(exc.value)
 
-    def test_create_json_data_structure(self, test_obj, logger):
-        data = json_generator._create_json_data(test_obj, logger)
+    def test_fmf_id_model_conversion(self, test_obj):
+        """Test FmfIdModel conversion from tmt object."""
+        fmf_id_data = FmfIdModel.from_fmf_id(test_obj.fmf_id)
+        assert fmf_id_data.name == test_obj.fmf_id.name
+        assert fmf_id_data.url == test_obj.fmf_id.url
+        assert fmf_id_data.ref == test_obj.fmf_id.ref
 
-        # Verify it matches our TypedDict structure
-        assert isinstance(data, dict)
-        assert "name" in data
-        assert "contact" in data
-        assert "tag" in data
-        assert "fmf-id" in data
+        # Test path conversion
+        if test_obj.fmf_id.path is not None:
+            assert fmf_id_data.path == test_obj.fmf_id.path.as_posix()
+        else:
+            assert fmf_id_data.path is None
 
-        # Verify fmf-id structure
-        fmf_id = data["fmf-id"]
-        assert "name" in fmf_id
-        assert "url" in fmf_id
-        assert "path" in fmf_id
-        assert "ref" in fmf_id
+    def test_object_model_conversion(self, test_obj):
+        """Test ObjectModel conversion from tmt object."""
+        obj_data = ObjectModel.from_tmt_object(test_obj)
+        assert obj_data.name == test_obj.name
+        assert obj_data.summary == test_obj.summary
+        assert obj_data.description == test_obj.description
+        assert obj_data.url == test_obj.web_link()
+        assert obj_data.ref == test_obj.fmf_id.ref
+        assert obj_data.contact == test_obj.contact
+        assert obj_data.tag == test_obj.tag
+        assert obj_data.tier == test_obj.tier
+
+    def test_field_aliases(self, test_obj, logger):
+        """Test that field aliases work correctly."""
+        data = json_generator.generate_test_json(test_obj, logger)
+        # Check that the JSON uses fmf-id
+        assert '"fmf-id":' in data
+        # But the model uses fmf_id
+        parsed = ObjectModel.model_validate_json(data)
+        assert hasattr(parsed, "fmf_id")

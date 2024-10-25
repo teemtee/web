@@ -5,6 +5,7 @@ import tmt
 from tmt.utils import GeneralError, yaml_to_dict
 
 from tmt_web.generators import yaml_generator
+from tmt_web.generators.json_generator import FmfIdModel, ObjectModel, TestAndPlanModel
 
 
 @pytest.fixture
@@ -23,74 +24,57 @@ def plan_obj(logger):
 
 
 class TestYamlGenerator:
+    """Test YAML generation for tests and plans."""
+
     def test_generate_test_yaml(self, test_obj, logger):
+        """Test generating YAML for a test object."""
         data = yaml_generator.generate_test_yaml(test_obj, logger)
         parsed = yaml_to_dict(data)
+        model = ObjectModel.model_validate(parsed)
 
-        # Check basic structure
-        assert isinstance(parsed, dict)
-        assert parsed["name"] == "/tests/data/sample_test"
-        assert parsed["summary"] == "Concise summary describing what the test does"
-
-        # Check types
-        assert isinstance(parsed["contact"], list)
-        assert isinstance(parsed["tag"], list)
-        assert isinstance(parsed.get("summary"), str | type(None))
-        assert isinstance(parsed.get("description"), str | type(None))
+        # Check content
+        assert model.name == "/tests/data/sample_test"
+        assert model.summary == "Concise summary describing what the test does"
+        assert model.url == test_obj.web_link()
 
         # Check fmf-id structure
-        fmf_id = parsed["fmf-id"]
-        assert isinstance(fmf_id, dict)
-        assert isinstance(fmf_id["name"], str)
-        assert isinstance(fmf_id.get("url"), str | type(None))
-        assert isinstance(fmf_id.get("path"), str | type(None))
-        assert isinstance(fmf_id.get("ref"), str | type(None))
+        assert isinstance(model.fmf_id, FmfIdModel)
+        assert model.fmf_id.name == test_obj.fmf_id.name
+        assert model.fmf_id.url == test_obj.fmf_id.url
 
     def test_generate_plan_yaml(self, plan_obj, logger):
+        """Test generating YAML for a plan object."""
         data = yaml_generator.generate_plan_yaml(plan_obj, logger)
         parsed = yaml_to_dict(data)
+        model = ObjectModel.model_validate(parsed)
 
-        # Check basic structure
-        assert isinstance(parsed, dict)
-        assert parsed["name"] == "/tests/data/sample_plan"
-
-        # Check types
-        assert isinstance(parsed["contact"], list)
-        assert isinstance(parsed["tag"], list)
-        assert isinstance(parsed.get("summary"), str | type(None))
-        assert isinstance(parsed.get("description"), str | type(None))
+        # Check content
+        assert model.name == "/tests/data/sample_plan"
+        assert model.url == plan_obj.web_link()
 
         # Check fmf-id structure
-        fmf_id = parsed["fmf-id"]
-        assert isinstance(fmf_id, dict)
-        assert isinstance(fmf_id["name"], str)
-        assert isinstance(fmf_id.get("url"), str | type(None))
-        assert isinstance(fmf_id.get("path"), str | type(None))
-        assert isinstance(fmf_id.get("ref"), str | type(None))
+        assert isinstance(model.fmf_id, FmfIdModel)
+        assert model.fmf_id.name == plan_obj.fmf_id.name
+        assert model.fmf_id.url == plan_obj.fmf_id.url
 
     def test_generate_testplan_yaml(self, test_obj, plan_obj, logger):
+        """Test generating YAML for combined test and plan."""
         data = yaml_generator.generate_testplan_yaml(test_obj, plan_obj, logger)
         parsed = yaml_to_dict(data)
-
-        # Check structure
-        assert isinstance(parsed, dict)
-        assert "test" in parsed
-        assert "plan" in parsed
+        model = TestAndPlanModel.model_validate(parsed)
 
         # Check test object
-        test_data = parsed["test"]
-        assert test_data["name"] == "/tests/data/sample_test"
-        assert isinstance(test_data["fmf-id"], dict)
+        assert model.test.name == "/tests/data/sample_test"
+        assert isinstance(model.test.fmf_id, FmfIdModel)
 
         # Check plan object
-        plan_data = parsed["plan"]
-        assert plan_data["name"] == "/tests/data/sample_plan"
-        assert isinstance(plan_data["fmf-id"], dict)
+        assert model.plan.name == "/tests/data/sample_plan"
+        assert isinstance(model.plan.fmf_id, FmfIdModel)
 
     def test_yaml_serialization_error(self, test_obj, logger, monkeypatch):
-        """Test error handling when YAML serialization fails"""
+        """Test error handling when YAML serialization fails."""
         def mock_dict_to_yaml(*args, **kwargs):
-            raise Exception("YAML serialization failed")
+            raise ValueError("YAML serialization failed")
 
         monkeypatch.setattr(yaml_generator, 'dict_to_yaml', mock_dict_to_yaml)
 
@@ -98,17 +82,22 @@ class TestYamlGenerator:
             yaml_generator.generate_test_yaml(test_obj, logger)
         assert "Failed to generate YAML output" in str(exc.value)
 
-    def test_mapping_to_dict_cast(self, test_obj, logger, monkeypatch):
-        """Test that we properly cast Mapping to dict for dict_to_yaml"""
-        calls = []
+    def test_field_aliases(self, test_obj, logger):
+        """Test that field aliases work correctly in YAML output."""
+        data = yaml_generator.generate_test_yaml(test_obj, logger)
+        parsed = yaml_to_dict(data)
 
-        def mock_dict_to_yaml(data, **kwargs):
-            calls.append(data)
-            assert isinstance(data, dict)  # Verify we got a dict
-            return "mocked yaml"
+        # Check that YAML uses fmf-id
+        assert "fmf-id" in parsed
+        # And the model uses fmf_id
+        model = ObjectModel.model_validate(parsed)
+        assert hasattr(model, "fmf_id")
 
-        monkeypatch.setattr(yaml_generator, 'dict_to_yaml', mock_dict_to_yaml)
-        yaml_generator.generate_test_yaml(test_obj, logger)
+    def test_yaml_format(self, test_obj, logger):
+        """Test that YAML output is properly formatted."""
+        data = yaml_generator.generate_test_yaml(test_obj, logger)
 
-        assert len(calls) == 1  # Verify dict_to_yaml was called
-        assert isinstance(calls[0], dict)  # Verify we passed a dict
+        # Check YAML formatting
+        assert "name: " in data  # YAML key-value format
+        assert "fmf-id:" in data  # Nested structure
+        assert "  name: " in data  # Proper indentation
