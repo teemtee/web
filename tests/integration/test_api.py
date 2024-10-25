@@ -70,30 +70,30 @@ class TestApi:
     def test_invalid_test_arguments(self, client):
         response = client.get("/?test-url=https://github.com/teemtee/tmt")
         data = response.content.decode("utf-8")
-        assert "Invalid arguments!" in data
+        assert "Both test-url and test-name must be provided together" in data
         response = client.get("/?test-name=/tests/core/smoke")
         data = response.content.decode("utf-8")
-        assert "Invalid arguments!" in data
+        assert "Both test-url and test-name must be provided together" in data
 
     def test_invalid_plan_arguments(self, client):
         response = client.get("/?plan-url=https://github.com/teemtee/tmt")
         data = response.content.decode("utf-8")
-        assert "Invalid arguments!" in data
+        assert "Both plan-url and plan-name must be provided together" in data
         response = client.get("/?plan-name=/plans/features/basic")
         data = response.content.decode("utf-8")
-        assert "Invalid arguments!" in data
+        assert "Both plan-url and plan-name must be provided together" in data
 
     def test_invalid_testplan_arguments(self, client):
         response = client.get("/?test-url=https://github.com/teemtee/tmt&plan-url=https://github.com/teemtee/tmt&"
                               "plan-name=/plans/features/basic")
         data = response.content.decode("utf-8")
-        assert "Invalid arguments!" in data
+        assert "Both test-url and test-name must be provided together" in data
 
     def test_invalid_argument_names(self, client):
         response = client.get("/?test_urlur=https://github.com/teemtee/tmt&test_nn=/tests/core/smoke")
         data = response.content.decode("utf-8")
-        assert response.status_code == 200
-        assert data == '"Missing arguments!"'
+        assert response.status_code == 500
+        assert "At least one of test or plan parameters must be provided" in data
 
 
 class TestCelery:
