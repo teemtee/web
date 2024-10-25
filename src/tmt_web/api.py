@@ -1,3 +1,4 @@
+import logging
 import os
 from typing import Annotated, Any, Literal
 
@@ -6,10 +7,14 @@ from fastapi import FastAPI, Request, status
 from fastapi.params import Query
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 from pydantic import BaseModel
+from tmt import Logger
 from tmt.utils import GeneralError
 
 from tmt_web import service, settings
 from tmt_web.generators import html_generator
+
+# Create main logger for the API
+logger = Logger(logging.getLogger("tmt-web-api"))
 
 app = FastAPI()
 
@@ -24,6 +29,7 @@ class TaskOut(BaseModel):
 @app.exception_handler(GeneralError)
 async def general_exception_handler(request: Request, exc: GeneralError):
     """Global exception handler for all TMT errors"""
+    logger.fail(str(exc))
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={"detail": str(exc)},
@@ -101,11 +107,15 @@ def find_test(
         out_format: Annotated[Literal["html", "json", "yaml"], Query(alias="format")] = "json",
 ) -> TaskOut | str | Any:
     # Parameter validations
+    logger.debug("Validating request parameters")
     if (test_url is None and test_name is not None) or (test_url is not None and test_name is None):
+        logger.fail("Both test-url and test-name must be provided together")
         raise GeneralError("Both test-url and test-name must be provided together")
     if (plan_url is None and plan_name is not None) or (plan_url is not None and plan_name is None):
+        logger.fail("Both plan-url and plan-name must be provided together")
         raise GeneralError("Both plan-url and plan-name must be provided together")
     if plan_url is None and plan_name is None and test_url is None and test_name is None:
+        logger.fail("At least one of test or plan parameters must be provided")
         raise GeneralError("At least one of test or plan parameters must be provided")
 
     service_args = {
@@ -122,6 +132,7 @@ def find_test(
 
     # Disable Celery if not needed
     if os.environ.get("USE_CELERY") == "false":
+        logger.debug("Celery disabled, processing request synchronously")
         response_by_output = {
             "html": HTMLResponse,
             "json": JSONResponse,
@@ -131,13 +142,17 @@ def find_test(
         response = response_by_output.get(out_format, PlainTextResponse)
         return response(service.main(**service_args))
 
+    logger.debug("Processing request asynchronously with Celery")
     r = service.main.delay(**service_args)
 
     # Special handling of response if the format is html
     # TODO: Shouldn't be the "yaml" format also covered with a `PlainTextResponse`?
     if out_format == "html":
+        logger.debug("Generating HTML status callback")
         status_callback_url = f"{settings.API_HOSTNAME}/status/html?task-id={r.task_id}"
-        return HTMLResponse(content=html_generator.generate_status_callback(r, status_callback_url))
+        return HTMLResponse(
+            content=html_generator.generate_status_callback(r, status_callback_url, logger)
+        )
 
     return _to_task_out(r)
 
@@ -149,26 +164,36 @@ def get_task_status(task_id: Annotated[str | None,
                 title="Task ID",
             )
         ]) -> TaskOut | str:
+    logger.debug(f"Getting task status for {task_id}")
     if task_id is None:
+        logger.fail("task-id is required")
         raise GeneralError("task-id is required")
 
     r = service.main.app.AsyncResult(task_id)
     return _to_task_out(r)
 
 
-@app.get("/status/html")
+@app.get("/status/html", response_class=HTMLResponse)
 def get_task_status_html(task_id: Annotated[str | None,
             Query(
                 alias="task-id",
                 title="Task ID",
             )
         ]) -> HTMLResponse:
+    logger.debug(f"Getting HTML task status for {task_id}")
     if task_id is None:
+        logger.fail("task-id is required")
         raise GeneralError("task-id is required")
 
     r = service.main.app.AsyncResult(task_id)
-    status_callback_url = f"{settings.API_HOSTNAME}/status/html?task-id={r.task_id}"
-    return HTMLResponse(content=html_generator.generate_status_callback(r, status_callback_url))
+    if r.successful() and r.result:
+        return HTMLResponse(content=r.result)
+    status_callback_url = (
+        f"{settings.API_HOSTNAME}/status/html?task-id={r.task_id}"
+    )
+    return HTMLResponse(
+        content=html_generator.generate_status_callback(r, status_callback_url, logger)
+    )
 
 
 def _to_task_out(r: AsyncResult) -> TaskOut:  # type: ignore [type-arg]
@@ -182,4 +207,5 @@ def _to_task_out(r: AsyncResult) -> TaskOut:  # type: ignore [type-arg]
 
 @app.get("/health")
 def health_check():
+    logger.debug("Health check requested")
     return {"status": "healthy"}

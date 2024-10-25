@@ -112,6 +112,7 @@ lint.ignore = [
     "PLR0913",  # Too many arguments
     "RET505",  # Unnecessary 'else' after 'return'
     "COM812",  # Trailing comma missing
+    "G004",    # Logging statement uses f-string
 ]
 
 [tool.ruff.lint.per-file-ignores]

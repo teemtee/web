@@ -1,14 +1,48 @@
 import json
-from typing import Any
+from collections.abc import Mapping
+from typing import TypedDict
 
-import tmt.utils
-from tmt import Plan, Test
+from tmt import Logger, Plan, Test
+from tmt.utils import GeneralError
 
 
-def _create_json_data(obj: Test | Plan, logger: tmt.Logger) -> dict[str, Any]:
+class FmfId(TypedDict):
+    """Structure of fmf-id field in JSON output"""
+    url: str | None
+    path: str | None
+    name: str
+    ref: str | None
+
+
+class ObjectData(TypedDict):
+    """Common structure for both Test and Plan objects in JSON output"""
+    name: str
+    summary: str | None
+    description: str | None
+    url: str | None
+    ref: str | None
+    contact: list[str]
+    tag: list[str]
+    tier: str | None
+    id: str
+    fmf_id: FmfId
+
+
+class TestAndPlanData(TypedDict):
+    """Structure for combined Test and Plan output"""
+    test: ObjectData
+    plan: ObjectData
+
+
+def _create_json_data(obj: Test | Plan, logger: Logger) -> Mapping[str, object]:
     """
     Helper function to create the JSON data from a test or plan object.
+
+    :param obj: Test or Plan object to convert
+    :param logger: Logger instance for logging
+    :return: Dictionary with object data in a standardized format
     """
+    logger.debug("Creating JSON data structure")
     full_url = obj.web_link()
     return {
         "name": obj.name,
@@ -29,45 +63,70 @@ def _create_json_data(obj: Test | Plan, logger: tmt.Logger) -> dict[str, Any]:
     }
 
 
-def generate_test_json(test: tmt.Test, logger: tmt.Logger) -> str:
+def _serialize_json(data: Mapping[str, object], logger: Logger) -> str:
     """
-    This function generates an JSON file with the input data for a test.
+    Helper function to serialize data to JSON with error handling.
 
-    :param test: Test object
-    :param logger: tmt.Logger instance
-    :return: JSON data for a given test
+    :param data: Data to serialize
+    :param logger: Logger instance for logging
+    :return: JSON string
+    :raises: GeneralError if JSON serialization fails
     """
+    try:
+        logger.debug("Serializing data to JSON")
+        return json.dumps(data)
+    except Exception as err:
+        logger.fail("Failed to serialize data to JSON")
+        raise GeneralError("Failed to generate JSON output") from err
+
+
+def generate_test_json(test: Test, logger: Logger) -> str:
+    """
+    Generate JSON data for a test.
+
+    :param test: Test object to convert
+    :param logger: Logger instance for logging
+    :return: JSON string with test data
+    :raises: GeneralError if JSON generation fails
+    """
+    logger.debug("Generating JSON data for test")
     data = _create_json_data(test, logger)
-    logger.print("Generating the JSON file...")
-    return json.dumps(data)
+    result = _serialize_json(data, logger)
+    logger.debug("JSON data generated")
+    return result
 
 
-def generate_plan_json(plan: tmt.Plan, logger: tmt.Logger) -> str:
+def generate_plan_json(plan: Plan, logger: Logger) -> str:
     """
-    This function generates an JSON file with the input data for a plan.
+    Generate JSON data for a plan.
 
-    :param plan: Plan object
-    :param logger: tmt.Logger instance
-    :return: JSON data for a given plan
+    :param plan: Plan object to convert
+    :param logger: Logger instance for logging
+    :return: JSON string with plan data
+    :raises: GeneralError if JSON generation fails
     """
+    logger.debug("Generating JSON data for plan")
     data = _create_json_data(plan, logger)
-    logger.print("Generating the JSON file...")
-    return json.dumps(data)
+    result = _serialize_json(data, logger)
+    logger.debug("JSON data generated")
+    return result
 
 
-def generate_testplan_json(test: tmt.Test, plan: tmt.Plan, logger: tmt.Logger) -> str:
+def generate_testplan_json(test: Test, plan: Plan, logger: Logger) -> str:
     """
-    This function generates an JSON file with the input data for a test and a plan.
+    Generate JSON data for both test and plan.
 
-    :param test: Test object
-    :param plan: Plan object
-    :param logger: tmt.Logger instance
-    :return: JSON data for a given test and plan
+    :param test: Test object to convert
+    :param plan: Plan object to convert
+    :param logger: Logger instance for logging
+    :return: JSON string with test and plan data
+    :raises: GeneralError if JSON generation fails
     """
-    logger.print("Generating the JSON file...")
+    logger.debug("Generating JSON data for test and plan")
     data = {
         "test": _create_json_data(test, logger),
         "plan": _create_json_data(plan, logger),
     }
-    logger.print("Generating the JSON file...")
-    return json.dumps(data)
+    result = _serialize_json(data, logger)
+    logger.debug("JSON data generated")
+    return result
