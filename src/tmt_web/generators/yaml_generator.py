@@ -1,14 +1,13 @@
-from collections.abc import Mapping
-from typing import Any, cast
+from typing import Any
 
 import tmt
 from tmt import Logger
 from tmt.utils import GeneralError, dict_to_yaml
 
-from tmt_web.generators.json_generator import _create_json_data
+from tmt_web.generators.json_generator import ObjectModel, TestAndPlanModel
 
 
-def _serialize_yaml(data: Mapping[str, Any], logger: Logger) -> str:
+def _serialize_yaml(data: dict[str, Any], logger: Logger) -> str:
     """
     Helper function to serialize data to YAML with error handling.
 
@@ -19,11 +18,7 @@ def _serialize_yaml(data: Mapping[str, Any], logger: Logger) -> str:
     """
     try:
         logger.debug("Serializing data to YAML")
-        # Cast Mapping to dict since dict_to_yaml expects a dict.
-        # This is safe because we know the data comes from _create_json_data
-        # which always returns a dict, even though its return type is the more
-        # generic Mapping for better type variance.
-        yaml_data = dict_to_yaml(cast(dict[str, Any], data))
+        yaml_data = dict_to_yaml(data)
         logger.debug("YAML data generated")
         return yaml_data
     except Exception as err:
@@ -41,7 +36,7 @@ def generate_test_yaml(test: tmt.Test, logger: Logger) -> str:
     :raises: GeneralError if YAML generation fails
     """
     logger.debug("Generating YAML data for test")
-    data = _create_json_data(test, logger)
+    data = ObjectModel.from_tmt_object(test).model_dump(by_alias=True)
     return _serialize_yaml(data, logger)
 
 
@@ -55,7 +50,7 @@ def generate_plan_yaml(plan: tmt.Plan, logger: Logger) -> str:
     :raises: GeneralError if YAML generation fails
     """
     logger.debug("Generating YAML data for plan")
-    data = _create_json_data(plan, logger)
+    data = ObjectModel.from_tmt_object(plan).model_dump(by_alias=True)
     return _serialize_yaml(data, logger)
 
 
@@ -70,8 +65,5 @@ def generate_testplan_yaml(test: tmt.Test, plan: tmt.Plan, logger: Logger) -> st
     :raises: GeneralError if YAML generation fails
     """
     logger.debug("Generating YAML data for test and plan")
-    data = {
-        "test": _create_json_data(test, logger),
-        "plan": _create_json_data(plan, logger),
-    }
+    data = TestAndPlanModel.from_tmt_objects(test, plan).model_dump(by_alias=True)
     return _serialize_yaml(data, logger)

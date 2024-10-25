@@ -32,11 +32,17 @@ dependencies = [
 ]
 
 [project.urls]
-Source = "https://github.com/teemtee/web teemtee/tmt-web"
+Source = "https://github.com/teemtee/web"
 
 [tool.hatch.version]
 source = "vcs"
 raw-options.version_scheme = "release-branch-semver"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tmt_web"]
+
+[tool.hatch.build.targets.wheel.shared-data]
+"src/tmt_web/py.typed" = "tmt_web/py.typed"
 
 [tool.hatch.envs.dev]
 extra-dependencies = [
@@ -140,4 +146,4 @@ check_untyped_defs = true
 no_implicit_reexport = true
 
 python_version = "3.12"
-files = ["src/", "tests/"]
+files = ["src/"]
