@@ -3,7 +3,8 @@ FROM python:${PYTHON_VERSION}
 
 RUN mkdir /app
 WORKDIR /app
-COPY README.md LICENSE pyproject.toml src/ ./
+COPY README.md LICENSE pyproject.toml ./
+COPY src/tmt_web/ ./tmt_web/
 
 RUN SETUPTOOLS_SCM_PRETEND_VERSION=0.1.0.dev0 pip install .
 
