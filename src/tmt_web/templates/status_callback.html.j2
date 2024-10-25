@@ -1,0 +1,41 @@
+{% extends '_base.html.j2' %}
+{% set title = "Task Status" %}
+
+{% block content %}
+  {% if status == "PENDING" %}
+    <h1>Processing...</h1>
+    <p>Status: {{ status }}</p>
+    <p>Your request is being processed. Please wait...</p>
+    <p><a href="{{ status_callback_url }}">{{ status_callback_url }}</a></p>
+    <script>
+      setTimeout(function() {
+        window.location.href = "{{ status_callback_url }}";
+      }, 2000);
+    </script>
+  {%- elif status == "RETRYING" %}
+    <h1>Retrying...</h1>
+    <p>Status: {{ status }}</p>
+    <p>Task is being retried. Please wait...</p>
+    <p><a href="{{ status_callback_url }}">{{ status_callback_url }}</a></p>
+    <script>
+      setTimeout(function() {
+        window.location.href = "{{ status_callback_url }}";
+      }, 2000);
+    </script>
+  {%- elif status == "FAILURE" %}
+    <h1>Task Failed</h1>
+    <p>Status: {{ status }}</p>
+    <p>Error: {{ result }}</p>
+    <p><a href="{{ status_callback_url }}">Refresh Status</a></p>
+  {%- elif status == "SUCCESS" %}
+    {{ result | safe }}
+  {%- else %}
+    <h1>Task Status</h1>
+    <p>Status: {{ status }}</p>
+    {% if status == "SUCCESS" %}
+    {{ result | safe }}
+    {% else %}
+    <p>Result: {{ result }}</p>
+    {% endif %}
+  {%- endif %}
+{%- endblock %}

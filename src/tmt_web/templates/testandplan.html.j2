@@ -1,0 +1,39 @@
+{% extends '_base.html.j2' %}
+{% set title = "Test and Plan Information" %}
+
+{% macro render_object(obj, title) %}
+    <h1>{{ title }}</h1>
+    <p>Name: {{ obj.name }}</p>
+    {% if obj.summary %}
+    <p>Summary: {{ obj.summary }}</p>
+    {% endif %}
+    {% if obj.description %}
+    <p>Description: {{ obj.description }}</p>
+    {% endif %}
+    <p>URL: <a href="{{ obj.web_link() }}" target="_blank">{{ obj.web_link() }}</a></p>
+    {% if obj.fmf_id.ref %}
+    <p>Reference: {{ obj.fmf_id.ref }}</p>
+    {% endif %}
+    {% if obj.contact %}
+    <p>Contact: {{ obj.contact | join(", ") }}</p>
+    {% endif %}
+    {% if obj.tag %}
+    <p>Tags: {{ obj.tag | join(", ") }}</p>
+    {% endif %}
+    {% if obj.tier %}
+    <p>Tier: {{ obj.tier }}</p>
+    {% endif %}
+    <p>ID: {{ obj.id }}</p>
+    <p>FMF ID:</p>
+    <ul>
+        {% if obj.fmf_id.url %}
+        <li>URL: {{ obj.fmf_id.url }}</li>
+        {% endif %}
+        <li>Path: {{ obj.fmf_id.path.as_posix() if obj.fmf_id.path else "None" }}</li>
+    </ul>
+{% endmacro %}
+
+{% block content %}
+    {{ render_object(test, "Test Information") }}
+    {{ render_object(plan, "Plan Information") }}
+{%- endblock %}

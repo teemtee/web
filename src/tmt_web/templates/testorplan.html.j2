@@ -1,0 +1,34 @@
+{% extends '_base.html.j2' %}
+{% set title = testorplan.name %}
+
+{% block content %}
+    <h1>{{ testorplan.name }}</h1>
+    <p>Name: {{ testorplan.name }}</p>
+    {% if testorplan.summary %}
+    <p>Summary: {{ testorplan.summary }}</p>
+    {% endif %}
+    {% if testorplan.description %}
+    <p>Description: {{ testorplan.description }}</p>
+    {% endif %}
+    <p>URL: <a href="{{ testorplan.web_link() }}" target="_blank">{{ testorplan.web_link() }}</a></p>
+    {% if testorplan.fmf_id.ref %}
+    <p>Reference: {{ testorplan.fmf_id.ref }}</p>
+    {% endif %}
+    {% if testorplan.contact %}
+    <p>Contact: {{ testorplan.contact | join(", ") }}</p>
+    {% endif %}
+    {% if testorplan.tag %}
+    <p>Tags: {{ testorplan.tag | join(", ") }}</p>
+    {% endif %}
+    {% if testorplan.tier %}
+    <p>Tier: {{ testorplan.tier }}</p>
+    {% endif %}
+    <p>ID: {{ testorplan.id }}</p>
+    <p>FMF ID:</p>
+    <ul>
+        {% if testorplan.fmf_id.url %}
+        <li>URL: {{ testorplan.fmf_id.url }}</li>
+        {% endif %}
+        <li>Path: {{ testorplan.fmf_id.path.as_posix() if testorplan.fmf_id.path else "None" }}</li>
+    </ul>
+{%- endblock %}
