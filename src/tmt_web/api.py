@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Annotated, Any, Literal
+from typing import Annotated, Literal
 
 from celery.result import AsyncResult
 from fastapi import FastAPI, Request, status
@@ -16,10 +16,15 @@ from tmt_web.generators import html_generator
 # Create main logger for the API
 logger = Logger(logging.getLogger("tmt-web-api"))
 
-app = FastAPI()
+app = FastAPI(
+    title="TMT Web API",
+    description="Web API for checking TMT tests, plans and stories",
+    version="1.0.0",
+)
 
 
 class TaskOut(BaseModel):
+    """Response model for asynchronous tasks."""
     id: str
     status: str
     result: str | None = None
@@ -38,8 +43,8 @@ async def general_exception_handler(request: Request, exc: GeneralError):
 
 # Sample url: https://tmt.org/?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke
 # or for plans: https://tmt.org/?plan-url=https://github.com/teemtee/tmt&plan-name=/plans/features/basic
-@app.get("/")
-def find_test(
+@app.get("/", response_model=TaskOut | str)
+def process_request(
         test_url: Annotated[
             str | None,
             Query(
@@ -104,8 +109,20 @@ def find_test(
                 description="Path to the plan metadata directory",
             ),
         ] = None,
-        out_format: Annotated[Literal["html", "json", "yaml"], Query(alias="format")] = "json",
-) -> TaskOut | str | Any:
+        out_format: Annotated[
+            Literal["html", "json", "yaml"],
+            Query(
+                alias="format",
+                description="Output format for the response",
+            )
+        ] = "json",
+) -> TaskOut | HTMLResponse | JSONResponse | PlainTextResponse:
+    """
+    Process a request for test, plan, or both.
+
+    Returns test/plan information in the specified format. For HTML format with Celery enabled,
+    returns a status page that will update to show the final result.
+    """
     # Parameter validations
     logger.debug("Validating request parameters")
     if (test_url is None and test_name is not None) or (test_url is not None and test_name is None):
@@ -145,25 +162,29 @@ def find_test(
     logger.debug("Processing request asynchronously with Celery")
     r = service.main.delay(**service_args)
 
-    # Special handling of response if the format is html
-    # TODO: Shouldn't be the "yaml" format also covered with a `PlainTextResponse`?
+    # Handle response based on format
     if out_format == "html":
         logger.debug("Generating HTML status callback")
         status_callback_url = f"{settings.API_HOSTNAME}/status/html?task-id={r.task_id}"
         return HTMLResponse(
             content=html_generator.generate_status_callback(r, status_callback_url, logger)
         )
+    elif out_format == "yaml":
+        task_out = _to_task_out(r)
+        return PlainTextResponse(content=task_out.model_dump_json())
+    else:
+        return _to_task_out(r)
 
-    return _to_task_out(r)
 
-
-@app.get("/status")
+@app.get("/status", response_model=TaskOut)
 def get_task_status(task_id: Annotated[str | None,
             Query(
                 alias="task-id",
                 title="Task ID",
+                description="ID of the task to check status for",
             )
-        ]) -> TaskOut | str:
+        ]) -> TaskOut:
+    """Get the status of an asynchronous task."""
     logger.debug(f"Getting task status for {task_id}")
     if task_id is None:
         logger.fail("task-id is required")
@@ -178,8 +199,10 @@ def get_task_status_html(task_id: Annotated[str | None,
             Query(
                 alias="task-id",
                 title="Task ID",
+                description="ID of the task to check status for",
             )
         ]) -> HTMLResponse:
+    """Get the status of an asynchronous task in HTML format."""
     logger.debug(f"Getting HTML task status for {task_id}")
     if task_id is None:
         logger.fail("task-id is required")
@@ -196,7 +219,8 @@ def get_task_status_html(task_id: Annotated[str | None,
     )
 
 
-def _to_task_out(r: AsyncResult) -> TaskOut:  # type: ignore [type-arg]
+def _to_task_out(r: AsyncResult[str]) -> TaskOut:
+    """Convert a Celery AsyncResult to a TaskOut response model."""
     return TaskOut(
         id=r.task_id,
         status=r.status,
@@ -206,6 +230,7 @@ def _to_task_out(r: AsyncResult) -> TaskOut:  # type: ignore [type-arg]
 
 
 @app.get("/health")
-def health_check():
+def health_check() -> dict[str, str]:
+    """Health check endpoint."""
     logger.debug("Health check requested")
     return {"status": "healthy"}

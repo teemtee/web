@@ -1,3 +1,11 @@
+"""
+Git repository handling utilities.
+
+This module provides functions for cloning and managing Git repositories,
+with support for reference (branch/tag) checkout and repository reuse.
+It uses tmt's Git utilities for robust clone operations with retry logic.
+"""
+
 import contextlib
 import hashlib
 from shutil import rmtree
@@ -23,10 +31,11 @@ def checkout_branch(path: Path, logger: Logger, ref: str) -> None:
     """
     Checks out the given branch in the repository.
 
-    :param ref: Name of the ref to check out
+    :param ref: Name of the ref to check out (branch, tag, or commit)
     :param path: Path to the repository
     :param logger: Instance of Logger
-    :raises: AttributeError if ref doesn't exist
+    :raises: AttributeError if ref doesn't exist or is invalid
+    :raises: GeneralError if git operations fail
     """
     try:
         logger.debug(f"Checking out ref '{ref}'")
@@ -35,25 +44,25 @@ def checkout_branch(path: Path, logger: Logger, ref: str) -> None:
         logger.debug(f"Checked out ref '{ref}'")
     except RunError as err:
         logger.fail(f"Failed to checkout ref '{ref}'")
-        raise AttributeError(f"Failed to checkout ref '{ref}'") from err
+        raise AttributeError(f"Failed to checkout ref '{ref}': {err}") from err
 
 
 def get_path_to_repository(url: str) -> Path:
     """
-    Returns the path to the cloned repository from the given URL. The repository url is hashed to
-    avoid repository name collisions.
+    Returns the path to the cloned repository from the given URL.
 
-    The repository url is hashed to avoid repository name collisions.
+    The repository URL is hashed to avoid repository name collisions,
+    and the path is constructed using the repository name and hash.
 
-    :param url: URL to the repository
+    :param url: URL to the repository (e.g., https://github.com/org/repo)
     :return: Path to the cloned repository
-    :raises: GitUrlError if URL is invalid
+    :raises: GitUrlError if URL is invalid or malformed
     """
     url = url.rstrip("/")
     try:
         repo_name = url.rsplit("/", 1)[-1]
     except Exception as err:
-        raise GitUrlError(f"Invalid repository URL: {url}") from err
+        raise GitUrlError(f"Invalid repository URL format: {url}") from err
 
     clone_dir_name = str(abs(hash(url)))  # abs in case of negative numbers
     return ROOT_DIR / settings.CLONE_DIR_PATH / repo_name / clone_dir_name
@@ -74,12 +83,16 @@ def clone_repository(url: str, logger: Logger, ref: str | None = None) -> None:
     """
     Clones the repository from the given URL and optionally checks out a specific ref.
 
+    The function first validates the URL, then clones the repository if it doesn't
+    exist. If a ref is provided, it will be checked out after cloning.
+
     :param url: URL to the repository
     :param logger: Instance of Logger
     :param ref: Optional name of the ref to check out
     :raises: GitUrlError if URL is invalid
     :raises: FileExistsError if repository already exists
     :raises: AttributeError if ref doesn't exist
+    :raises: GeneralError if git operations fail
     """
     logger.debug(f"Cloning repository from {url}")
     try:
@@ -116,7 +129,10 @@ def clone_repository(url: str, logger: Logger, ref: str | None = None) -> None:
 
 def clear_tmp_dir(logger: Logger) -> None:
     """
-    Clears the .tmp directory.
+    Clears the .tmp directory where repositories are cloned.
+
+    This function is useful for cleanup operations or when you need to
+    ensure a fresh state. It will remove the entire clone directory if it exists.
 
     :param logger: Instance of Logger
     :raises: GeneralError if directory cleanup fails (but not if directory doesn't exist)
@@ -136,8 +152,12 @@ def clear_tmp_dir(logger: Logger) -> None:
 
 def get_git_repository(url: str, logger: Logger, ref: str | None) -> Path:
     """
-    Clones the repository from the given URL and returns the path to the cloned repository.
-    If the repository already exists, it will be reused.
+    Gets a Git repository by cloning or reusing an existing clone.
+
+    This is the main entry point for repository operations. It will:
+    1. Try to clone the repository if it doesn't exist
+    2. Reuse an existing clone if it does
+    3. Checkout the specified ref if provided
 
     :param url: URL to the repository
     :param logger: Instance of Logger
@@ -145,6 +165,7 @@ def get_git_repository(url: str, logger: Logger, ref: str | None) -> Path:
     :return: Path to the cloned repository
     :raises: GitUrlError if URL is invalid
     :raises: AttributeError if ref doesn't exist
+    :raises: GeneralError if git operations fail
     """
     with contextlib.suppress(FileExistsError):
         clone_repository(url, logger, ref)
