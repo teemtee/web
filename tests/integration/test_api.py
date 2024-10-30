@@ -98,6 +98,34 @@ class TestApi:
         assert response.status_code == 500
         assert "At least one of test or plan parameters must be provided" in data
 
+    def test_health_check(self, client):
+        """Test health check endpoint."""
+        response = client.get("/health")
+        assert response.status_code == 200
+        data = response.json()
+
+        # Check required fields
+        assert data["status"] == "ok"
+        assert isinstance(data["timestamp"], str)
+        assert isinstance(data["uptime_seconds"], float)
+
+        # Check version info
+        assert "api" in data["version"]
+        assert "python" in data["version"]
+        assert "tmt" in data["version"]
+
+        # Check dependencies
+        assert "celery" in data["dependencies"]
+        assert "redis" in data["dependencies"]
+        # When Celery is disabled, dependencies should be marked as disabled
+        assert data["dependencies"]["celery"] == "disabled"
+        assert data["dependencies"]["redis"] == "disabled"
+
+        # Check system info
+        assert "platform" in data["system"]
+        assert "hostname" in data["system"]
+        assert "python_implementation" in data["system"]
+
 
 class TestCelery:
     """
@@ -180,3 +208,13 @@ class TestCelery:
         data = response.content.decode("utf-8")
         assert "Task Status" in data
         assert "Status: PENDING" in data
+
+    def test_health_check_with_celery(self, client):
+        """Test health check endpoint with Celery enabled."""
+        response = client.get("/health")
+        assert response.status_code == 200
+        data = response.json()
+
+        # Dependencies should be ok when Celery is enabled and running
+        assert data["dependencies"]["celery"] == "ok"
+        assert data["dependencies"]["redis"] == "ok"

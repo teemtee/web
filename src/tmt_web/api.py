@@ -1,5 +1,8 @@
 import logging
 import os
+import platform
+import time
+from datetime import UTC, datetime
 from typing import Annotated, Literal
 
 from celery.result import AsyncResult
@@ -8,10 +11,14 @@ from fastapi.params import Query
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
 from pydantic import BaseModel
 from tmt import Logger
+from tmt import __version__ as tmt_version
 from tmt.utils import GeneralError
 
 from tmt_web import service, settings
 from tmt_web.generators import html_generator
+
+# Record start time for uptime calculation
+START_TIME = time.time()
 
 # Create main logger for the API
 logger = Logger(logging.getLogger("tmt-web-api"))
@@ -29,6 +36,16 @@ class TaskOut(BaseModel):
     status: str
     result: str | None = None
     status_callback_url: str | None = None
+
+
+class HealthStatus(BaseModel):
+    """Health check response model."""
+    status: str
+    timestamp: datetime
+    uptime_seconds: float
+    version: dict[str, str]
+    dependencies: dict[str, str]
+    system: dict[str, str]
 
 
 @app.exception_handler(GeneralError)
@@ -236,8 +253,51 @@ def _to_task_out(r: AsyncResult) -> TaskOut:  # type: ignore [type-arg]
     )
 
 
-@app.get("/health")
-def health_check() -> dict[str, str]:
-    """Health check endpoint."""
+@app.get("/health", response_model=HealthStatus)
+def health_check() -> HealthStatus:
+    """
+    Health check endpoint providing detailed system and service status.
+
+    Returns:
+        - Service status and uptime
+        - Version information for key components
+        - System information
+        - Dependencies status (Redis, Celery)
+    """
     logger.debug("Health check requested")
-    return {"status": "healthy"}
+
+    # Check Celery/Redis status
+    celery_enabled = os.environ.get("USE_CELERY") != "false"
+    celery_status = "ok"
+    redis_status = "ok"
+
+    if not celery_enabled:
+        celery_status = "disabled"
+        redis_status = "disabled"
+    else:
+        try:
+            # Ping Redis through Celery
+            service.main.app.control.ping(timeout=1.0)
+        except Exception:
+            celery_status = "failed"
+            redis_status = "failed"
+
+    return HealthStatus(
+        status="ok",
+        timestamp=datetime.now(UTC),
+        uptime_seconds=time.time() - START_TIME,
+        version={
+            "api": app.version,
+            "python": platform.python_version(),
+            "tmt": tmt_version,
+        },
+        dependencies={
+            "celery": celery_status,
+            "redis": redis_status,
+        },
+        system={
+            "platform": platform.platform(),
+            "hostname": platform.node(),
+            "python_implementation": platform.python_implementation(),
+        },
+    )
