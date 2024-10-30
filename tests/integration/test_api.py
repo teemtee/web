@@ -13,9 +13,8 @@ def client():
 
 
 class TestApi:
-    """
-    This class tests the behaviour of the API directly
-    """
+    """This class tests the behaviour of the API directly."""
+
     @pytest.fixture(autouse=True)
     def _setup(self):
         os.environ["USE_CELERY"] = "false"
@@ -128,9 +127,8 @@ class TestApi:
 
 
 class TestCelery:
-    """
-    This class tests the API with the Celery instance
-    """
+    """This class tests the API with the Celery instance."""
+
     @pytest.fixture(autouse=True)
     def _setup(self):
         os.environ["USE_CELERY"] = "true"

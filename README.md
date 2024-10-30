@@ -15,15 +15,17 @@ Add `-d` for the service to run in the background.
 In order to quickly experiment without using Celery use this:
 
 ```bash
-USE_CELERY=false CLONE_DIR_PATH=/tmp/test uvicorn api:app --reload --host 0.0.0.0 --port 8000
+USE_CELERY=false CLONE_DIR_PATH=/var/tmp/test uvicorn tmt_web.api:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ## Tests
 
 To run the tests, use the `pytest` command (assuming the service is running).
 
-Alternatively, if you have `hatch` installed, `hatch run test:run` command will
+Alternatively, if you have `hatch` installed, `hatch run dev:test` command will
 rebuild, start the service and run the tests.
+
+Run `hatch env show` to see the list of available environments and their scripts.
 
 ## Environment variables
 

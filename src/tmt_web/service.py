@@ -88,7 +88,7 @@ def process_test_request(
     test_name: str,
     test_ref: str | None = None,
     test_path: str | None = None,
-    out_format: str = "json"
+    out_format: str = "json",
 ) -> str:
     """
     Process a test request and return formatted output.
@@ -122,7 +122,7 @@ def process_plan_request(
     plan_name: str,
     plan_ref: str | None = None,
     plan_path: str | None = None,
-    out_format: str = "json"
+    out_format: str = "json",
 ) -> str:
     """
     Process a plan request and return formatted output.
@@ -160,7 +160,7 @@ def process_testplan_request(
     plan_name: str,
     plan_ref: str | None,
     plan_path: str | None,
-    out_format: str
+    out_format: str,
 ) -> str:
     """
     Process a test and plan request and return formatted output.
@@ -217,7 +217,7 @@ def main(
     plan_name: str | None,
     plan_ref: str | None,
     plan_path: str | None,
-    out_format: Literal["html", "json", "yaml"]
+    out_format: Literal["html", "json", "yaml"],
 ) -> str:
     """
     Main entry point for processing requests.

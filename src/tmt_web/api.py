@@ -32,6 +32,7 @@ app = FastAPI(
 
 class TaskOut(BaseModel):
     """Response model for asynchronous tasks."""
+
     id: str
     status: str
     result: str | None = None
@@ -40,6 +41,7 @@ class TaskOut(BaseModel):
 
 class HealthStatus(BaseModel):
     """Health check response model."""
+
     status: str
     timestamp: datetime
     uptime_seconds: float
@@ -50,7 +52,7 @@ class HealthStatus(BaseModel):
 
 @app.exception_handler(GeneralError)
 async def general_exception_handler(request: Request, exc: GeneralError):
-    """Global exception handler for all tmt errors"""
+    """Global exception handler for all tmt errors."""
     logger.fail(str(exc))
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -132,11 +134,10 @@ def root(
             Query(
                 alias="format",
                 description="Output format for the response",
-            )
+            ),
         ] = "json",
 ) -> TaskOut | HTMLResponse | JSONResponse | PlainTextResponse | RedirectResponse:
-    """
-    Process a request for test, plan, or both.
+    """Process a request for test, plan, or both.
 
     Returns test/plan information in the specified format. For HTML format with Celery enabled,
     returns a status page that will update to show the final result.
@@ -191,13 +192,12 @@ def root(
         logger.debug("Generating HTML status callback")
         status_callback_url = f"{settings.API_HOSTNAME}/status/html?task-id={r.task_id}"
         return HTMLResponse(
-            content=html_generator.generate_status_callback(r, status_callback_url, logger)
+            content=html_generator.generate_status_callback(r, status_callback_url, logger),
         )
-    elif out_format == "yaml":
+    if out_format == "yaml":
         task_out = _to_task_out(r)
         return PlainTextResponse(content=task_out.model_dump_json())
-    else:
-        return _to_task_out(r)
+    return _to_task_out(r)
 
 
 @app.get("/status", response_model=TaskOut)
@@ -206,7 +206,7 @@ def get_task_status(task_id: Annotated[str | None,
                 alias="task-id",
                 title="Task ID",
                 description="ID of the task to check status for",
-            )
+            ),
         ]) -> TaskOut:
     """Get the status of an asynchronous task."""
     logger.debug(f"Getting task status for {task_id}")
@@ -224,7 +224,7 @@ def get_task_status_html(task_id: Annotated[str | None,
                 alias="task-id",
                 title="Task ID",
                 description="ID of the task to check status for",
-            )
+            ),
         ]) -> HTMLResponse:
     """Get the status of an asynchronous task in HTML format."""
     logger.debug(f"Getting HTML task status for {task_id}")
@@ -239,7 +239,7 @@ def get_task_status_html(task_id: Annotated[str | None,
         f"{settings.API_HOSTNAME}/status/html?task-id={r.task_id}"
     )
     return HTMLResponse(
-        content=html_generator.generate_status_callback(r, status_callback_url, logger)
+        content=html_generator.generate_status_callback(r, status_callback_url, logger),
     )
 
 
@@ -255,14 +255,14 @@ def _to_task_out(r: AsyncResult) -> TaskOut:  # type: ignore [type-arg]
 
 @app.get("/health", response_model=HealthStatus)
 def health_check() -> HealthStatus:
-    """
-    Health check endpoint providing detailed system and service status.
+    """Health check endpoint providing detailed system and service status.
 
     Returns:
         - Service status and uptime
         - Version information for key components
         - System information
         - Dependencies status (Redis, Celery)
+
     """
     logger.debug("Health check requested")
 

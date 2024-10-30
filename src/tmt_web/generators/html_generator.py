@@ -49,7 +49,7 @@ def generate_status_callback(result: AsyncResult, status_callback_url: str, logg
     data = {
         "status": result.status,
         "status_callback_url": status_callback_url,
-        "result": result.result
+        "result": result.result,
     }
     return _render_template("status_callback.html.j2", logger=logger, **data)
 

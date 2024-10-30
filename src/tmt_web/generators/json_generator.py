@@ -8,6 +8,7 @@ from tmt.utils import GeneralError
 
 class FmfIdModel(BaseModel):
     """Represents fmf-id data in JSON output."""
+
     name: str
     url: str | None = None
     path: str | None = None
@@ -26,6 +27,7 @@ class FmfIdModel(BaseModel):
 
 class ObjectModel(BaseModel):
     """Common structure for both Test and Plan objects in JSON output."""
+
     name: str
     contact: list[str]
     tag: list[str]
@@ -55,6 +57,7 @@ class ObjectModel(BaseModel):
 
     class Config:
         """Pydantic model configuration."""
+
         populate_by_name = True  # Allow both fmf_id and fmf-id
         json_encoders: ClassVar[dict[type[FmfIdModel], Callable[[FmfIdModel], dict[str, Any]]]] = {
             FmfIdModel: lambda v: v.model_dump(),
@@ -64,6 +67,7 @@ class ObjectModel(BaseModel):
 
 class TestAndPlanModel(BaseModel):
     """Combined Test and Plan data for JSON output."""
+
     test: ObjectModel
     plan: ObjectModel
 
