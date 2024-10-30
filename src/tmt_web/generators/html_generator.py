@@ -35,7 +35,7 @@ def _render_template(template_name: str, logger: Logger, **kwargs) -> str:
         raise GeneralError(f"Failed to render template '{template_name}'") from err
 
 
-def generate_status_callback(result: AsyncResult[str], status_callback_url: str, logger: Logger) -> str:
+def generate_status_callback(result: AsyncResult, status_callback_url: str, logger: Logger) -> str:  # type: ignore [type-arg]
     """
     Generate HTML status callback page.
 

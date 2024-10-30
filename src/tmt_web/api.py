@@ -219,7 +219,7 @@ def get_task_status_html(task_id: Annotated[str | None,
     )
 
 
-def _to_task_out(r: AsyncResult[str]) -> TaskOut:
+def _to_task_out(r: AsyncResult) -> TaskOut:  # type: ignore [type-arg]
     """Convert a Celery AsyncResult to a TaskOut response model."""
     return TaskOut(
         id=r.task_id,

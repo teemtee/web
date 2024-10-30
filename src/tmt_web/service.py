@@ -4,7 +4,8 @@ from typing import Literal, TypeVar
 import tmt
 from celery.app import Celery  # type: ignore[attr-defined]
 from tmt import Logger
-from tmt.utils import GeneralError, GitUrlError, Path  # type: ignore[attr-defined]
+from tmt._compat.pathlib import Path
+from tmt.utils import GeneralError, GitUrlError
 
 from tmt_web import settings
 from tmt_web.generators import html_generator, json_generator, yaml_generator

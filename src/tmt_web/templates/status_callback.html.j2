@@ -5,7 +5,7 @@
   {% if status == "PENDING" %}
     <h1>Processing...</h1>
     <p>Status: {{ status }}</p>
-    <p>Your request is being processed. Please wait...</p>
+    <p>Your request is being processed. Please try again in a few seconds:</p>
     <p><a href="{{ status_callback_url }}">{{ status_callback_url }}</a></p>
     <script>
       setTimeout(function() {
@@ -15,7 +15,7 @@
   {%- elif status == "RETRYING" %}
     <h1>Retrying...</h1>
     <p>Status: {{ status }}</p>
-    <p>Task is being retried. Please wait...</p>
+    <p>Task is being retried. Please wait a few seconds and try again:</p>
     <p><a href="{{ status_callback_url }}">{{ status_callback_url }}</a></p>
     <script>
       setTimeout(function() {

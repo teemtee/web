@@ -1,11 +1,11 @@
 import logging
-import os
 from pathlib import Path
 
 import pytest
 import tmt
 from tmt.utils import GitUrlError
 
+from tmt_web import settings
 from tmt_web.utils import git_handler
 
 
@@ -17,7 +17,7 @@ def logger():
 @pytest.fixture
 def test_repo_path():
     """Get the test repository path."""
-    return Path(__file__).resolve().parents[2].joinpath(os.getenv("CLONE_DIR_PATH", "./.repos/"))
+    return (git_handler.ROOT_DIR / settings.CLONE_DIR_PATH).resolve()
 
 
 @pytest.fixture
@@ -25,7 +25,6 @@ def _clean_repo_dir(test_repo_path, logger):
     """Ensure clean repository directory before and after tests."""
     # Clean before test
     git_handler.clear_tmp_dir(logger)
-    test_repo_path.mkdir(exist_ok=True)
 
     yield
 
@@ -44,49 +43,27 @@ class TestGitHandler:
         """Test clearing temporary directory."""
         # Create test files
         test_file = test_repo_path / "test.txt"
-        test_repo_path.mkdir(exist_ok=True)
+        test_repo_path.mkdir(exist_ok=True, parents=True)
         test_file.touch()
 
         # Clear directory
         git_handler.clear_tmp_dir(logger)
+        # Force a refresh of the path's status
+        test_repo_path = test_repo_path.resolve()
         assert not test_repo_path.exists()
 
-    def test_get_path_to_repository_valid_url(self):
-        """Test getting repository path with valid URL."""
-        path = git_handler.get_path_to_repository(self.TEST_REPO)
+    def test_get_unique_clone_path_valid_url(self):
+        """Test getting unique clone path with valid URL."""
+        path = git_handler.get_unique_clone_path(self.TEST_REPO)
         assert isinstance(path, Path)
         assert ".repos" in str(path)
-        assert "tmt" in str(path)
-
-    def test_get_path_to_repository_invalid_url(self):
-        """Test getting repository path with invalid URL."""
-        with pytest.raises(GitUrlError, match="Invalid repository URL format"):
-            git_handler.get_path_to_repository(self.MALFORMED_URL)
-
-    @pytest.mark.usefixtures("_clean_repo_dir")
-    def test_check_if_repository_exists(self, logger):
-        """Test repository existence check."""
-        # Initially should not exist
-        assert not git_handler.check_if_repository_exists(self.TEST_REPO)
-
-        # Clone and check again
-        git_handler.clone_repository(self.TEST_REPO, logger)
-        assert git_handler.check_if_repository_exists(self.TEST_REPO)
 
     @pytest.mark.usefixtures("_clean_repo_dir")
     def test_clone_repository_success(self, logger):
         """Test successful repository cloning."""
-        git_handler.clone_repository(self.TEST_REPO, logger)
-        path = git_handler.get_path_to_repository(self.TEST_REPO)
+        path = git_handler.clone_repository(self.TEST_REPO, logger)
         assert path.exists()
         assert (path / ".git").exists()
-
-    @pytest.mark.usefixtures("_clean_repo_dir")
-    def test_clone_repository_already_exists(self, logger):
-        """Test cloning when repository already exists."""
-        git_handler.clone_repository(self.TEST_REPO, logger)
-        with pytest.raises(FileExistsError):
-            git_handler.clone_repository(self.TEST_REPO, logger)
 
     @pytest.mark.usefixtures("_clean_repo_dir")
     def test_clone_repository_invalid_url(self, logger):
@@ -97,34 +74,15 @@ class TestGitHandler:
     @pytest.mark.usefixtures("_clean_repo_dir")
     def test_clone_repository_with_ref(self, logger):
         """Test cloning with specific ref."""
-        git_handler.clone_repository(self.TEST_REPO, logger, ref="main")
-        path = git_handler.get_path_to_repository(self.TEST_REPO)
+        path = git_handler.clone_repository(self.TEST_REPO, logger, ref="main")
         assert path.exists()
+        assert (path / ".git").exists()
 
     @pytest.mark.usefixtures("_clean_repo_dir")
     def test_clone_repository_invalid_ref(self, logger):
         """Test cloning with invalid ref."""
         with pytest.raises(AttributeError, match="Failed to checkout ref"):
             git_handler.clone_repository(self.TEST_REPO, logger, ref="invalid-branch")
-
-    @pytest.mark.usefixtures("_clean_repo_dir")
-    def test_checkout_branch_success(self, logger):
-        """Test successful branch checkout."""
-        git_handler.clone_repository(self.TEST_REPO, logger)
-        path = git_handler.get_path_to_repository(self.TEST_REPO)
-
-        # Test switching between valid branches
-        git_handler.checkout_branch(path, logger, "quay")
-        git_handler.checkout_branch(path, logger, "main")
-
-    @pytest.mark.usefixtures("_clean_repo_dir")
-    def test_checkout_branch_invalid(self, logger):
-        """Test checkout with invalid branch."""
-        git_handler.clone_repository(self.TEST_REPO, logger)
-        path = git_handler.get_path_to_repository(self.TEST_REPO)
-
-        with pytest.raises(AttributeError, match="Failed to checkout ref"):
-            git_handler.checkout_branch(path, logger, "invalid-branch")
 
     @pytest.mark.usefixtures("_clean_repo_dir")
     def test_get_git_repository_new(self, logger):

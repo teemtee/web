@@ -161,13 +161,13 @@ class TestCelery:
 
     def test_status_endpoint_missing_task_id(self, client):
         response = client.get("/status")
-        assert response.status_code == 500
-        assert "task-id is required" in response.json()["detail"]
+        assert response.status_code == 422  # FastAPI validation error
+        assert "Field required" in response.json()["detail"][0]["msg"]
 
     def test_status_html_endpoint_missing_task_id(self, client):
         response = client.get("/status/html")
-        assert response.status_code == 500
-        assert "task-id is required" in response.json()["detail"]
+        assert response.status_code == 422  # FastAPI validation error
+        assert "Field required" in response.json()["detail"][0]["msg"]
 
     def test_status_html_endpoint_invalid_task_id(self, client):
         response = client.get("/status/html?task-id=invalid-task-id")

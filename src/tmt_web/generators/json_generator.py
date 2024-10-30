@@ -59,6 +59,7 @@ class ObjectModel(BaseModel):
         json_encoders: ClassVar[dict[type[FmfIdModel], Callable[[FmfIdModel], dict[str, Any]]]] = {
             FmfIdModel: lambda v: v.model_dump(),
         }
+        alias_generator = None  # fmf_id vs fmf-id
 
 
 class TestAndPlanModel(BaseModel):
@@ -86,7 +87,7 @@ def _serialize_json(data: BaseModel, logger: Logger) -> str:
     """
     try:
         logger.debug("Serializing data to JSON")
-        return data.model_dump_json()
+        return data.model_dump_json(by_alias=True)  # fmf_id vs fmf-id
     except Exception as err:
         logger.fail("Failed to serialize data to JSON")
         raise GeneralError("Failed to generate JSON output") from err
