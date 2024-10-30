@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 import tmt
-from tmt.utils import GitUrlError
+from tmt.utils import GeneralError, GitUrlError
 
 from tmt_web import settings
 from tmt_web.utils import git_handler
@@ -51,6 +51,18 @@ class TestGitHandler:
         # Force a refresh of the path's status
         test_repo_path = test_repo_path.resolve()
         assert not test_repo_path.exists()
+
+    def test_clear_tmp_dir_error(self, mocker, logger):
+        """Test clear_tmp_dir with error."""
+        # Create test directory
+        test_repo_path = (git_handler.ROOT_DIR / settings.CLONE_DIR_PATH).resolve()
+        test_repo_path.mkdir(exist_ok=True, parents=True)
+
+        # Mock rmtree to fail
+        mocker.patch("tmt_web.utils.git_handler.rmtree", side_effect=Exception("Failed to remove"))
+
+        with pytest.raises(GeneralError, match="Failed to clear repository clone directory"):
+            git_handler.clear_tmp_dir(logger)
 
     def test_get_unique_clone_path_valid_url(self):
         """Test getting unique clone path with valid URL."""
@@ -107,3 +119,12 @@ class TestGitHandler:
         path = git_handler.get_git_repository(self.TEST_REPO, logger, "main")
         assert path.exists()
         assert (path / ".git").exists()
+
+    @pytest.mark.usefixtures("_clean_repo_dir")
+    def test_get_git_repository_checkout_error(self, mocker, logger):
+        """Test get_git_repository with checkout error."""
+        # Mock git clone to only try once
+        mocker.patch("tmt.utils.git.git_clone", side_effect=Exception("Failed to checkout"), kwargs={"attempts": 1})
+
+        with pytest.raises(AttributeError, match="Failed to checkout ref"):
+            git_handler.get_git_repository(self.TEST_REPO, logger, "invalid-branch")
