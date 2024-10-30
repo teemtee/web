@@ -10,11 +10,28 @@ services:
       - API_HOSTNAME=http://localhost:8000
     ports:
       - 8000:8000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+
   redis:
     container_name: redis
     image: redis:latest
     ports:
       - 6379:6379
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
 
   celery:
     container_name: celery
@@ -26,4 +43,6 @@ services:
       - REDIS_URL=redis://redis:6379
       - API_HOSTNAME=http://localhost:8000
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
