@@ -20,6 +20,12 @@ class TestApi:
     def _setup(self):
         os.environ["USE_CELERY"] = "false"
 
+    def test_root_empty_redirects_to_docs(self, client):
+        """Test that empty root path redirects to docs."""
+        response = client.get("/", follow_redirects=False)
+        assert response.status_code == 307
+        assert response.headers["location"] == "/docs"
+
     def test_basic_test_request_json(self, client):
         response = client.get("/?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke&test-ref=main")
         data = response.content.decode("utf-8")

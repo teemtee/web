@@ -5,7 +5,7 @@ from typing import Annotated, Literal
 from celery.result import AsyncResult
 from fastapi import FastAPI, Request, status
 from fastapi.params import Query
-from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
 from pydantic import BaseModel
 from tmt import Logger
 from tmt.utils import GeneralError
@@ -17,8 +17,8 @@ from tmt_web.generators import html_generator
 logger = Logger(logging.getLogger("tmt-web-api"))
 
 app = FastAPI(
-    title="TMT Web API",
-    description="Web API for checking TMT tests, plans and stories",
+    title="tmt Web API",
+    description="Web API for checking tmt tests, plans and stories",
     version="1.0.0",
 )
 
@@ -33,7 +33,7 @@ class TaskOut(BaseModel):
 
 @app.exception_handler(GeneralError)
 async def general_exception_handler(request: Request, exc: GeneralError):
-    """Global exception handler for all TMT errors"""
+    """Global exception handler for all tmt errors"""
     logger.fail(str(exc))
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -44,7 +44,8 @@ async def general_exception_handler(request: Request, exc: GeneralError):
 # Sample url: https://tmt.org/?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke
 # or for plans: https://tmt.org/?plan-url=https://github.com/teemtee/tmt&plan-name=/plans/features/basic
 @app.get("/", response_model=TaskOut | str)
-def process_request(
+def root(
+        request: Request,
         test_url: Annotated[
             str | None,
             Query(
@@ -116,13 +117,19 @@ def process_request(
                 description="Output format for the response",
             )
         ] = "json",
-) -> TaskOut | HTMLResponse | JSONResponse | PlainTextResponse:
+) -> TaskOut | HTMLResponse | JSONResponse | PlainTextResponse | RedirectResponse:
     """
     Process a request for test, plan, or both.
 
     Returns test/plan information in the specified format. For HTML format with Celery enabled,
     returns a status page that will update to show the final result.
+
+    If no parameters are provided, redirects to API documentation.
     """
+    # Show API docs if no parameters are provided
+    if not request.query_params:
+        return RedirectResponse(url="/docs")
+
     # Parameter validations
     logger.debug("Validating request parameters")
     if (test_url is None and test_name is not None) or (test_url is not None and test_name is None):
