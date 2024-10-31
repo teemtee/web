@@ -1,4 +1,5 @@
 import contextlib
+import hashlib
 from shutil import rmtree
 
 from tmt import Logger
@@ -74,12 +75,16 @@ def get_path_to_repository(url: str) -> Path:
     """
     Returns the path to the cloned repository from the given URL.
 
+    The repository url is hashed to avoid repository name collisions.
+
     :param url: URL to the repository
     :return: Path to the cloned repository
     """
-    repo_name = url.rstrip("/").rsplit("/", 1)[-1]
+    url = url.rstrip("/")
+    clone_dir_name = hashlib.sha256(url.encode()).hexdigest()
+    repo_name = url.rsplit("/", 1)[-1]
     root_dir = Path(__file__).resolve().parents[2]  # going up from tmt_web/utils/git_handler.py
-    return root_dir / settings.CLONE_DIR_PATH / repo_name
+    return root_dir / settings.CLONE_DIR_PATH / repo_name / clone_dir_name
 
 
 def check_if_repository_exists(url: str) -> bool:
