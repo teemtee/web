@@ -51,6 +51,7 @@ def get_tree(url: str, name: str, ref: str | None, tree_path: str | None) -> tmt
         path = Path(path.as_posix() + tree_path)
 
     logger.debug(f"Looking for tree in {path}")
+    tmt.plugins.explore(logger=logger)
     tree = tmt.base.Tree(path=path, logger=logger)
     logger.debug("Tree found")
     return tree
