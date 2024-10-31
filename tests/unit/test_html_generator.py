@@ -38,7 +38,7 @@ class TestHtmlGenerator:
 
         # Check content
         assert f'<h1>{test_obj.name}</h1>' in data
-        assert f'<p>Name: {test_obj.name}</p>' in data
+        assert f'<p><strong>Name:</strong> {test_obj.name}</p>' in data
         assert test_obj.summary in data
 
     def test_generate_testplan_html(self, test_obj, plan_obj, logger):
@@ -52,12 +52,12 @@ class TestHtmlGenerator:
 
         # Check test content
         assert 'Test Information' in data
-        assert f'<p>Name: {test_obj.name}</p>' in data
+        assert f'<p><strong>Name:</strong> {test_obj.name}</p>' in data
         assert test_obj.summary in data
 
         # Check plan content
         assert 'Plan Information' in data
-        assert f'<p>Name: {plan_obj.name}</p>' in data
+        assert f'<p><strong>Name:</strong> {plan_obj.name}</p>' in data
         assert plan_obj.summary in data
 
     def test_generate_status_callback_pending(self, logger):

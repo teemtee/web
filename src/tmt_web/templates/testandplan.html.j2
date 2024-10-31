@@ -1,39 +1,119 @@
 {% extends '_base.html.j2' %}
-{% set title = "Test and Plan Information" %}
 
-{% macro render_object(obj, title) %}
-    <h1>{{ title }}</h1>
-    <p>Name: {{ obj.name }}</p>
-    {% if obj.summary %}
-    <p>Summary: {{ obj.summary }}</p>
-    {% endif %}
-    {% if obj.description %}
-    <p>Description: {{ obj.description }}</p>
-    {% endif %}
-    <p>URL: <a href="{{ obj.web_link() }}" target="_blank">{{ obj.web_link() }}</a></p>
-    {% if obj.fmf_id.ref %}
-    <p>Reference: {{ obj.fmf_id.ref }}</p>
-    {% endif %}
-    {% if obj.contact %}
-    <p>Contact: {{ obj.contact | join(", ") }}</p>
-    {% endif %}
-    {% if obj.tag %}
-    <p>Tags: {{ obj.tag | join(", ") }}</p>
-    {% endif %}
-    {% if obj.tier %}
-    <p>Tier: {{ obj.tier }}</p>
-    {% endif %}
-    <p>ID: {{ obj.id }}</p>
-    <p>FMF ID:</p>
-    <ul>
-        {% if obj.fmf_id.url %}
-        <li>URL: {{ obj.fmf_id.url }}</li>
-        {% endif %}
-        <li>Path: {{ obj.fmf_id.path.as_posix() if obj.fmf_id.path else "None" }}</li>
-    </ul>
-{% endmacro %}
+{% block title %}Test and Plan Information{% endblock %}
 
 {% block content %}
-    {{ render_object(test, "Test Information") }}
-    {{ render_object(plan, "Plan Information") }}
+{# Test Section #}
+<section>
+  <h1>Test Information</h1>
+
+  <div class="metadata">
+    <p><strong>Name:</strong> {{ test.name }}</p>
+    {% if test.summary %}
+    <p><strong>Summary:</strong> {{ test.summary }}</p>
+    {% endif %}
+    {% if test.description %}
+    <p><strong>Description:</strong> {{ test.description }}</p>
+    {% endif %}
+    {% if test.tier %}
+    <p><strong>Tier:</strong> {{ test.tier }}</p>
+    {% endif %}
+    {% if test.ref %}
+    <p><strong>Reference:</strong> {{ test.ref }}</p>
+    {% endif %}
+    {% if test.path %}
+    <p><strong>Path:</strong> {{ test.path }}</p>
+    {% endif %}
+    {% if test.id %}
+    <p><strong>ID:</strong> {{ test.id }}</p>
+    {% endif %}
+    {% if test.fmf_id %}
+      {% if test.fmf_id.url %}
+      <p><strong>URL:</strong> <a href="{{ test.fmf_id.url }}">{{ test.fmf_id.url }}</a></p>
+      {% endif %}
+      {% if test.fmf_id.ref %}
+      <p><strong>Reference:</strong> {{ test.fmf_id.ref }}</p>
+      {% endif %}
+      {% if test.fmf_id.name %}
+      <p><strong>Name:</strong> {{ test.fmf_id.name }}</p>
+      {% endif %}
+      {% if test.fmf_id.path %}
+      <p><strong>Path:</strong> {{ test.fmf_id.path }}</p>
+      {% endif %}
+    {% endif %}
+    {% if test.contact %}
+    <p><strong>Contacts:</strong></p>
+    <ul class="contact-list">
+    {% for contact in test.contact %}
+      <li>{{ contact }}</li>
+    {% endfor %}
+    </ul>
+    {% endif %}
+    {% if test.tag %}
+    <p><strong>Tags:</strong></p>
+    <div class="tag-list">
+    {% for tag in test.tag %}
+      <span class="tag">{{ tag }}</span>
+    {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+{# Plan Section #}
+<section>
+  <h1>Plan Information</h1>
+
+  <div class="metadata">
+    <p><strong>Name:</strong> {{ plan.name }}</p>
+    {% if plan.summary %}
+    <p><strong>Summary:</strong> {{ plan.summary }}</p>
+    {% endif %}
+    {% if plan.description %}
+    <p><strong>Description:</strong> {{ plan.description }}</p>
+    {% endif %}
+    {% if plan.tier %}
+    <p><strong>Tier:</strong> {{ plan.tier }}</p>
+    {% endif %}
+    {% if plan.ref %}
+    <p><strong>Reference:</strong> {{ plan.ref }}</p>
+    {% endif %}
+    {% if plan.path %}
+    <p><strong>Path:</strong> {{ plan.path }}</p>
+    {% endif %}
+    {% if plan.id %}
+    <p><strong>ID:</strong> {{ plan.id }}</p>
+    {% endif %}
+    {% if plan.fmf_id %}
+      {% if plan.fmf_id.url %}
+      <p><strong>URL:</strong> <a href="{{ plan.fmf_id.url }}">{{ plan.fmf_id.url }}</a></p>
+      {% endif %}
+      {% if plan.fmf_id.ref %}
+      <p><strong>Reference:</strong> {{ plan.fmf_id.ref }}</p>
+      {% endif %}
+      {% if plan.fmf_id.name %}
+      <p><strong>Name:</strong> {{ plan.fmf_id.name }}</p>
+      {% endif %}
+      {% if plan.fmf_id.path %}
+      <p><strong>Path:</strong> {{ plan.fmf_id.path }}</p>
+      {% endif %}
+    {% endif %}
+    {% if plan.contact %}
+    <p><strong>Contacts:</strong></p>
+    <ul class="contact-list">
+    {% for contact in plan.contact %}
+      <li>{{ contact }}</li>
+    {% endfor %}
+    </ul>
+    {% endif %}
+    {% if plan.tag %}
+    <p><strong>Tags:</strong></p>
+    <div class="tag-list">
+    {% for tag in plan.tag %}
+      <span class="tag">{{ tag }}</span>
+    {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</section>
 {%- endblock %}
