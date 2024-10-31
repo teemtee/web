@@ -70,8 +70,9 @@ class TestHtmlGenerator:
         assert '<!DOCTYPE html>' in data
         assert '<h1>Processing...</h1>' in data
         assert callback_url in data
-        assert 'Please try again in a few seconds' in data
+        assert 'Please wait...' in data
         assert 'setTimeout' in data  # Check for auto-refresh script
+        assert 'window.location.href' in data  # Check for proper redirect
 
     def test_generate_status_callback_retrying(self, logger):
         """Test status callback page for retrying task."""
@@ -84,7 +85,7 @@ class TestHtmlGenerator:
         assert '<h1>Retrying...</h1>' in data
         assert callback_url in data
         assert 'Task is being retried' in data
-        assert 'setTimeout' in data  # Check for auto-refresh script
+        assert 'window.location.href' in data  # Check for proper redirect
 
     def test_generate_status_callback_success(self, logger):
         """Test status callback page for successful task."""
