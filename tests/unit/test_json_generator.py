@@ -5,7 +5,7 @@ import tmt
 from tmt.utils import GeneralError
 
 from tmt_web.generators import json_generator
-from tmt_web.generators.json_generator import FmfIdModel, ObjectModel, TestAndPlanModel
+from tmt_web.generators.json_generator import CombinedTestPlanModel, FmfIdModel, ObjectModel
 
 
 @pytest.fixture
@@ -58,7 +58,7 @@ class TestJsonGenerator:
     def test_generate_testplan_json(self, test_obj, plan_obj, logger):
         """Test generating JSON for combined test and plan."""
         data = json_generator.generate_testplan_json(test_obj, plan_obj, logger)
-        parsed = TestAndPlanModel.model_validate_json(data)
+        parsed = CombinedTestPlanModel.model_validate_json(data)
 
         # Check test object
         assert parsed.test.name == "/tests/data/sample_test"

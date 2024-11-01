@@ -1,7 +1,6 @@
-from collections.abc import Callable
-from typing import Any, ClassVar
+from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from tmt import Logger, Plan, Test
 from tmt.utils import GeneralError
 
@@ -24,6 +23,15 @@ class FmfIdModel(BaseModel):
             ref=fmf_id.ref,
         )
 
+    def model_dump(self, **kwargs: Any) -> dict[str, Any]:
+        """Custom serialization for FmfId."""
+        return {
+            "name": self.name,
+            "url": self.url,
+            "path": self.path,
+            "ref": self.ref,
+        }
+
 
 class ObjectModel(BaseModel):
     """Common structure for both Test and Plan objects in JSON output."""
@@ -38,6 +46,11 @@ class ObjectModel(BaseModel):
     tier: str | None = None
     id: str | None = None
     fmf_id: FmfIdModel = Field(alias="fmf-id")
+
+    model_config = ConfigDict(
+        populate_by_name=True,  # Allow both fmf_id and fmf-id
+        alias_generator=None,  # Allow both fmf_id and fmf-id
+    )
 
     @classmethod
     def from_tmt_object(cls, obj: Test | Plan) -> "ObjectModel":
@@ -55,25 +68,16 @@ class ObjectModel(BaseModel):
             **{"fmf-id": FmfIdModel.from_fmf_id(obj.fmf_id)},
         )
 
-    class Config:
-        """Pydantic model configuration."""
 
-        populate_by_name = True  # Allow both fmf_id and fmf-id
-        json_encoders: ClassVar[dict[type[FmfIdModel], Callable[[FmfIdModel], dict[str, Any]]]] = {
-            FmfIdModel: lambda v: v.model_dump(),
-        }
-        alias_generator = None  # fmf_id vs fmf-id
-
-
-class TestAndPlanModel(BaseModel):
+class CombinedTestPlanModel(BaseModel):
     """Combined Test and Plan data for JSON output."""
 
     test: ObjectModel
     plan: ObjectModel
 
     @classmethod
-    def from_tmt_objects(cls, test: Test, plan: Plan) -> "TestAndPlanModel":
-        """Create TestAndPlanModel from tmt Test and Plan objects."""
+    def from_tmt_objects(cls, test: Test, plan: Plan) -> "CombinedTestPlanModel":
+        """Create CombinedTestPlanModel from tmt Test and Plan objects."""
         return cls(
             test=ObjectModel.from_tmt_object(test),
             plan=ObjectModel.from_tmt_object(plan),
@@ -140,7 +144,7 @@ def generate_testplan_json(test: Test, plan: Plan, logger: Logger) -> str:
     :raises: GeneralError if JSON generation fails
     """
     logger.debug("Generating JSON data for test and plan")
-    data = TestAndPlanModel.from_tmt_objects(test, plan)
+    data = CombinedTestPlanModel.from_tmt_objects(test, plan)
     result = _serialize_json(data, logger)
     logger.debug("JSON data generated")
     return result
