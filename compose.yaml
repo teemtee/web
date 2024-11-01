@@ -4,26 +4,45 @@ services:
     build:
       context: .
       dockerfile: ./Containerfile
-    command: uvicorn src.api:app --reload --host 0.0.0.0 --port 8000
+    command: uvicorn tmt_web.api:app --reload --host 0.0.0.0 --port 8000
     environment:
       - REDIS_URL=redis://redis:6379
       - API_HOSTNAME=http://localhost:8000
     ports:
       - 8000:8000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+
   redis:
     container_name: redis
     image: redis:latest
     ports:
       - 6379:6379
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
 
   celery:
     container_name: celery
     build:
       context: .
       dockerfile: ./Containerfile
-    command: celery --app=src.api.service worker --loglevel=INFO
+    command: celery --app=tmt_web.service worker --loglevel=INFO
     environment:
       - REDIS_URL=redis://redis:6379
       - API_HOSTNAME=http://localhost:8000
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
