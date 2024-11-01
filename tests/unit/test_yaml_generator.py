@@ -5,7 +5,7 @@ import tmt
 from tmt.utils import GeneralError, yaml_to_dict
 
 from tmt_web.generators import yaml_generator
-from tmt_web.generators.json_generator import CombinedTestPlanModel, FmfIdModel, ObjectModel
+from tmt_web.generators.json_generator import CombinedTestPlanModel, FmfIdModel
 
 
 @pytest.fixture
@@ -40,6 +40,11 @@ class TestYamlGenerator:
         assert isinstance(parsed["fmf-id"], dict)
         assert parsed["fmf-id"]["name"] == test_obj.fmf_id.name
         assert parsed["fmf-id"]["url"] == test_obj.fmf_id.url
+
+        # Check YAML formatting
+        assert "name: " in data
+        assert "summary: " in data
+        assert "fmf-id:" in data
 
     def test_generate_plan_yaml(self, plan_obj, logger):
         """Test generating YAML for a plan object."""
@@ -80,21 +85,3 @@ class TestYamlGenerator:
         with pytest.raises(GeneralError) as exc:
             yaml_generator.generate_test_yaml(test_obj, logger)
         assert "Failed to generate YAML output" in str(exc.value)
-
-    def test_yaml_format(self, test_obj, logger):
-        """Test YAML output format."""
-        data = yaml_generator.generate_test_yaml(test_obj, logger)
-        # Check YAML formatting
-        assert "name: " in data
-        assert "summary: " in data
-        assert "fmf-id:" in data
-
-    def test_field_aliases(self, test_obj, logger):
-        """Test that field aliases work correctly."""
-        data = yaml_generator.generate_test_yaml(test_obj, logger)
-        parsed = yaml_to_dict(data)
-        # Check that YAML uses fmf-id
-        assert "fmf-id" in parsed
-        # But the model uses fmf_id
-        model = ObjectModel.model_validate(parsed)
-        assert hasattr(model, "fmf_id")

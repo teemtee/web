@@ -92,6 +92,14 @@ class TestJsonGenerator:
         else:
             assert fmf_id_data.path is None
 
+    def test_fmf_id_model_none_path(self, test_obj, monkeypatch):
+        """Test FmfIdModel conversion with None path."""
+        # Mock the path to be None
+        monkeypatch.setattr(test_obj.fmf_id, 'path', None)
+
+        fmf_id_data = FmfIdModel.from_fmf_id(test_obj.fmf_id)
+        assert fmf_id_data.path is None
+
     def test_object_model_conversion(self, test_obj):
         """Test ObjectModel conversion from tmt object."""
         obj_data = ObjectModel.from_tmt_object(test_obj)
@@ -112,3 +120,20 @@ class TestJsonGenerator:
         # But the model uses fmf_id
         parsed = ObjectModel.model_validate_json(data)
         assert hasattr(parsed, "fmf_id")
+
+    def test_fmf_id_model_dump(self):
+        """Test FmfIdModel custom model_dump method."""
+        fmf_id_data = FmfIdModel(
+            name="/tests/core/smoke",
+            url="http://example.com",
+            path=None,
+            ref="main",
+        )
+
+        dumped = fmf_id_data.model_dump()
+        assert dumped == {
+            "name": "/tests/core/smoke",
+            "url": "http://example.com",
+            "path": None,
+            "ref": "main",
+        }

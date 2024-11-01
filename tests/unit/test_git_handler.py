@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 import tmt
-from tmt.utils import GeneralError, GitUrlError
+from tmt.utils import Command, GeneralError, GitUrlError, RunError
 
 from tmt_web import settings
 from tmt_web.utils import git_handler
@@ -71,30 +71,10 @@ class TestGitHandler:
         assert ".repos" in str(path)
 
     @pytest.mark.usefixtures("_clean_repo_dir")
-    def test_clone_repository_success(self, logger):
-        """Test successful repository cloning."""
-        path = git_handler.clone_repository(self.TEST_REPO, logger)
-        assert path.exists()
-        assert (path / ".git").exists()
-
-    @pytest.mark.usefixtures("_clean_repo_dir")
     def test_clone_repository_invalid_url(self, logger):
         """Test cloning with invalid repository URL."""
         with pytest.raises(GitUrlError):
             git_handler.clone_repository(self.INVALID_REPO, logger)
-
-    @pytest.mark.usefixtures("_clean_repo_dir")
-    def test_clone_repository_with_ref(self, logger):
-        """Test cloning with specific ref."""
-        path = git_handler.clone_repository(self.TEST_REPO, logger, ref="main")
-        assert path.exists()
-        assert (path / ".git").exists()
-
-    @pytest.mark.usefixtures("_clean_repo_dir")
-    def test_clone_repository_invalid_ref(self, logger):
-        """Test cloning with invalid ref."""
-        with pytest.raises(AttributeError, match="Failed to checkout ref"):
-            git_handler.clone_repository(self.TEST_REPO, logger, ref="invalid-branch")
 
     @pytest.mark.usefixtures("_clean_repo_dir")
     def test_get_git_repository_new(self, logger):
@@ -126,5 +106,20 @@ class TestGitHandler:
         # Mock git clone to only try once
         mocker.patch("tmt.utils.git.git_clone", side_effect=Exception("Failed to checkout"), kwargs={"attempts": 1})
 
+        with pytest.raises(AttributeError, match="Failed to checkout ref"):
+            git_handler.get_git_repository(self.TEST_REPO, logger, "invalid-branch")
+
+    @pytest.mark.usefixtures("_clean_repo_dir")
+    def test_get_git_repository_existing_checkout_error(self, mocker, logger):
+        """Test get_git_repository with checkout error on existing repo."""
+        # First create the repo
+        path = git_handler.get_git_repository(self.TEST_REPO, logger, None)
+        assert path.exists()
+
+        # Mock checkout to fail
+        cmd = Command("git", "checkout", "invalid-branch")
+        mocker.patch("tmt.utils.Command.run", side_effect=RunError("Command failed", cmd, 1))
+
+        # Try to get same repo with invalid ref
         with pytest.raises(AttributeError, match="Failed to checkout ref"):
             git_handler.get_git_repository(self.TEST_REPO, logger, "invalid-branch")

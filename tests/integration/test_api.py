@@ -97,6 +97,12 @@ class TestApi:
         assert response.status_code == 500
         assert "At least one of test or plan parameters must be provided" in data
 
+    def test_status_endpoint_no_task_id(self, client):
+        """Test /status endpoint with no task_id parameter."""
+        response = client.get("/status")
+        assert response.status_code == 422  # FastAPI validation error
+        assert "Field required" in response.json()["detail"][0]["msg"]
+
     def test_health_check(self, client):
         """Test health check endpoint."""
         response = client.get("/health")
@@ -124,6 +130,24 @@ class TestApi:
         assert "platform" in data["system"]
         assert "hostname" in data["system"]
         assert "python_implementation" in data["system"]
+
+    def test_health_check_redis_error(self, client, monkeypatch):
+        """Test health check when Redis ping fails."""
+        # Enable Celery for this test
+        os.environ["USE_CELERY"] = "true"
+
+        # Mock Redis ping to fail
+        def mock_ping(*args, **kwargs):
+            raise Exception("Redis connection failed")
+
+        monkeypatch.setattr("tmt_web.service.main.app.control.ping", mock_ping)
+
+        response = client.get("/health")
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["dependencies"]["celery"] == "failed"
+        assert data["dependencies"]["redis"] == "failed"
 
 
 class TestCelery:
@@ -191,15 +215,25 @@ class TestCelery:
             else:
                 pytest.fail("Unknown status: " + json_data["status"])
 
-    def test_status_endpoint_missing_task_id(self, client):
-        response = client.get("/status")
-        assert response.status_code == 422  # FastAPI validation error
-        assert "Field required" in response.json()["detail"][0]["msg"]
-
     def test_status_html_endpoint_missing_task_id(self, client):
         response = client.get("/status/html")
         assert response.status_code == 422  # FastAPI validation error
         assert "Field required" in response.json()["detail"][0]["msg"]
+
+    def test_status_endpoint_empty_task_id(self, client):
+        """Test /status endpoint with empty task_id."""
+        response = client.get("/status?task-id=")
+        assert response.status_code == 500
+        data = response.json()
+        assert data["detail"] == "task-id is required"
+
+    def test_status_html_endpoint_empty_task_id(self, client):
+        """Test /status/html endpoint with empty task_id."""
+        response = client.get("/status/html?task-id=")
+        assert response.status_code == 500
+        data = response.json()
+        assert data["detail"] == "task-id is required"
+
 
     def test_status_html_endpoint_invalid_task_id(self, client):
         response = client.get("/status/html?task-id=invalid-task-id")

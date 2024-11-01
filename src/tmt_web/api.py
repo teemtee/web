@@ -210,7 +210,7 @@ def get_task_status(task_id: Annotated[str | None,
         ]) -> TaskOut:
     """Get the status of an asynchronous task."""
     logger.debug(f"Getting task status for {task_id}")
-    if task_id is None:
+    if not task_id:
         logger.fail("task-id is required")
         raise GeneralError("task-id is required")
 
@@ -228,7 +228,7 @@ def get_task_status_html(task_id: Annotated[str | None,
         ]) -> HTMLResponse:
     """Get the status of an asynchronous task in HTML format."""
     logger.debug(f"Getting HTML task status for {task_id}")
-    if task_id is None:
+    if not task_id:
         logger.fail("task-id is required")
         raise GeneralError("task-id is required")
 
