@@ -2,7 +2,7 @@
 Git repository handling utilities.
 
 This module provides functions for cloning and managing Git repositories,
-with support for reference (branch/tag) checkout and repository reuse.
+with support for refs (branch/tag) checkout and repository reuse.
 It uses tmt's Git utilities for robust clone operations with retry logic.
 """
 
@@ -57,7 +57,7 @@ def clone_repository(url: str, logger: Logger, ref: str | None = None) -> Path:
 
     :param url: Repository URL
     :param logger: Logger instance
-    :param ref: Optional reference to checkout
+    :param ref: Optional ref to checkout
     :return: Path to the cloned repository
     :raises: GitUrlError if URL is invalid
     :raises: GeneralError if clone fails
@@ -90,7 +90,7 @@ def get_git_repository(url: str, logger: Logger, ref: str | None = None) -> Path
 
     :param url: Repository URL
     :param logger: Logger instance
-    :param ref: Optional reference to checkout
+    :param ref: Optional ref to checkout
     :return: Path to the cloned repository
     :raises: GitUrlError if URL is invalid
     :raises: GeneralError if clone fails

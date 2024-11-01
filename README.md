@@ -67,9 +67,8 @@ if `format` is set to `html`.
   * `plan-name` - Name of the plan - accepts a `string`
 
   * `format` - Format of the output - accepts a `string`, default is
-    `json`, other options are `xml`, `html` (serves as a basic
+    `json`, other options are `yaml`, `html` (serves as a basic
     human-readable output format)
-  * `id` - Unique ID of the tmt object
 
 ### `/status`
 
@@ -87,3 +86,11 @@ simple HTML formatting.
 ### `/health`
 
 Returns a health status of the service.
+
+## Attribution
+
+The web interface design is based on the work of
+[Fedora Design team](https://gitlab.com/fedora/design/team),
+licensed under [CC-BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
+The design elements include typography, color scheme, and visual
+components adapted from the Fedora design guidelines.

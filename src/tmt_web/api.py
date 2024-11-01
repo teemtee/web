@@ -85,7 +85,7 @@ def root(
             str | None,
             Query(
                 alias="test-ref",
-                title="Test reference",
+                title="Test ref",
                 description="Reference of the test repository",
             ),
         ] = None,
@@ -117,7 +117,7 @@ def root(
             str | None,
             Query(
                 alias="plan-ref",
-                title="Plan reference",
+                title="Plan ref",
                 description="Reference of the plan repository",
             ),
         ] = None,
