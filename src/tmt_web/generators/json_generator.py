@@ -23,15 +23,6 @@ class FmfIdModel(BaseModel):
             ref=fmf_id.ref,
         )
 
-    def model_dump(self, **kwargs: Any) -> dict[str, Any]:
-        """Custom serialization for FmfId."""
-        return {
-            "name": self.name,
-            "url": self.url,
-            "path": self.path,
-            "ref": self.ref,
-        }
-
 
 class ObjectModel(BaseModel):
     """Common structure for both Test and Plan objects in JSON output."""

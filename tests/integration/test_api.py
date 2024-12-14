@@ -27,6 +27,7 @@ class TestApi:
 
     def test_basic_test_request_json(self, client):
         response = client.get("/?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke&test-ref=main")
+        assert response.status_code == 200
         data = response.content.decode("utf-8")
         assert "500" not in data
         assert "https://github.com/teemtee/tmt/tree/main/tests/core/smoke/main.fmf" in data
@@ -37,6 +38,7 @@ class TestApi:
             "&test-name=/test/shell/weird"
             "&test-path=/tests/execute/basic/data"
             "&test-ref=main")
+        assert response.status_code == 200
         data = response.content.decode("utf-8")
         assert "500" not in data
         assert "https://github.com/teemtee/tmt/tree/main/tests/execute/basic/data/test.fmf" in data
@@ -44,6 +46,7 @@ class TestApi:
     def test_basic_test_request_html(self, client):
         response = client.get(
             "/?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke&test-ref=main&format=html")
+        assert response.status_code == 200
         data = response.content.decode("utf-8")
         assert "500" not in data
         assert '<html lang="en">' in data
@@ -51,12 +54,14 @@ class TestApi:
 
     def test_basic_test_request_yaml(self, client):
         response = client.get("/?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke&format=yaml")
+        assert response.status_code == 200
         data = response.content.decode("utf-8")
         assert "500" not in data
         assert "url: https://github.com/teemtee/tmt/tree/main/tests/core/smoke/main.fmf" in data
 
     def test_basic_plan_request(self, client):
         response = client.get("/?plan-url=https://github.com/teemtee/tmt&plan-name=/plans/features/basic&type=plan")
+        assert response.status_code == 200
         data = response.content.decode("utf-8")
         assert "500" not in data
         assert "https://github.com/teemtee/tmt/tree/main/plans/features/basic.fmf" in data
@@ -64,6 +69,7 @@ class TestApi:
     def test_basic_testplan_request(self, client):
         response = client.get("/?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke&"
                               "plan-url=https://github.com/teemtee/tmt&plan-name=/plans/features/basic&type=plan")
+        assert response.status_code == 200
         data = response.content.decode("utf-8")
         assert "500" not in data
         assert "https://github.com/teemtee/tmt/tree/main/tests/core/smoke/main.fmf" in data
@@ -71,31 +77,48 @@ class TestApi:
 
     def test_invalid_test_arguments(self, client):
         response = client.get("/?test-url=https://github.com/teemtee/tmt")
+        assert response.status_code == 400
         data = response.content.decode("utf-8")
         assert "Both test-url and test-name must be provided together" in data
+
         response = client.get("/?test-name=/tests/core/smoke")
+        assert response.status_code == 400
         data = response.content.decode("utf-8")
         assert "Both test-url and test-name must be provided together" in data
 
     def test_invalid_plan_arguments(self, client):
         response = client.get("/?plan-url=https://github.com/teemtee/tmt")
+        assert response.status_code == 400
         data = response.content.decode("utf-8")
         assert "Both plan-url and plan-name must be provided together" in data
+
         response = client.get("/?plan-name=/plans/features/basic")
+        assert response.status_code == 400
         data = response.content.decode("utf-8")
         assert "Both plan-url and plan-name must be provided together" in data
 
     def test_invalid_testplan_arguments(self, client):
         response = client.get("/?test-url=https://github.com/teemtee/tmt&plan-url=https://github.com/teemtee/tmt&"
                               "plan-name=/plans/features/basic")
+        assert response.status_code == 400
         data = response.content.decode("utf-8")
         assert "Both test-url and test-name must be provided together" in data
 
     def test_invalid_argument_names(self, client):
         response = client.get("/?test_urlur=https://github.com/teemtee/tmt&test_nn=/tests/core/smoke")
+        assert response.status_code == 400
         data = response.content.decode("utf-8")
-        assert response.status_code == 500
         assert "At least one of test or plan parameters must be provided" in data
+
+    def test_not_found_errors(self, client):
+        """Test that missing tests/plans return 404."""
+        response = client.get("/?test-url=https://github.com/teemtee/tmt&test-name=/nonexistent/test")
+        assert response.status_code == 404
+        assert "not found" in response.json()["detail"].lower()
+
+        response = client.get("/?plan-url=https://github.com/teemtee/tmt&plan-name=/nonexistent/plan")
+        assert response.status_code == 404
+        assert "not found" in response.json()["detail"].lower()
 
     def test_status_endpoint_no_task_id(self, client):
         """Test /status endpoint with no task_id parameter."""
@@ -159,10 +182,12 @@ class TestCelery:
 
     def test_basic_test_request_json(self, client):
         response = client.get("/?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke")
+        assert response.status_code == 200
         json_data = response.json()
         while True:
             if json_data["status"] == "PENDING":
                 response = client.get("/status?task-id=" + json_data["id"])
+                assert response.status_code == 200
                 json_data = response.json()
                 time.sleep(0.1)
             elif json_data["status"] == "SUCCESS":
@@ -177,6 +202,7 @@ class TestCelery:
 
     def test_basic_test_request_html(self, client):
         response = client.get("/?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke&format=html")
+        assert response.status_code == 200
         data = response.content.decode("utf-8")
         assert "Processing..." in data
         assert "setTimeout" in data  # Check for auto-refresh script
@@ -187,6 +213,7 @@ class TestCelery:
         # Poll until complete
         while True:
             response = client.get(f"/status/html?task-id={task_id}")
+            assert response.status_code == 200
             data = response.content.decode("utf-8")
             if "Processing..." in data:
                 time.sleep(0.1)
@@ -199,10 +226,12 @@ class TestCelery:
 
     def test_basic_test_request_yaml(self, client):
         response = client.get("/?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke&format=yaml")
+        assert response.status_code == 200
         json_data = response.json()
         while True:
             if json_data["status"] == "PENDING":
                 response = client.get("/status?task-id=" + json_data["id"])
+                assert response.status_code == 200
                 json_data = response.json()
                 time.sleep(0.1)
             elif json_data["status"] == "SUCCESS":
@@ -223,23 +252,56 @@ class TestCelery:
     def test_status_endpoint_empty_task_id(self, client):
         """Test /status endpoint with empty task_id."""
         response = client.get("/status?task-id=")
-        assert response.status_code == 500
+        assert response.status_code == 400
         data = response.json()
         assert data["detail"] == "task-id is required"
 
     def test_status_html_endpoint_empty_task_id(self, client):
         """Test /status/html endpoint with empty task_id."""
         response = client.get("/status/html?task-id=")
-        assert response.status_code == 500
+        assert response.status_code == 400
         data = response.json()
         assert data["detail"] == "task-id is required"
 
-
     def test_status_html_endpoint_invalid_task_id(self, client):
         response = client.get("/status/html?task-id=invalid-task-id")
+        assert response.status_code == 200  # Still returns 200 as it shows a status page
         data = response.content.decode("utf-8")
         assert "Task Status" in data
         assert "Status: PENDING" in data
+
+    def test_not_found_with_celery(self, client):
+        """Test that missing tests/plans return 404 with Celery."""
+        # Initial request creates a task
+        response = client.get("/?test-url=https://github.com/teemtee/tmt&test-name=/nonexistent/test")
+        assert response.status_code == 200
+        task_data = response.json()
+        task_id = task_data["id"]
+
+        # Poll the status endpoint until the task completes
+        while True:
+            response = client.get(f"/status?task-id={task_id}")
+            if response.status_code == 404:
+                # Task completed with not found error
+                assert "not found" in response.json()["detail"].lower()
+                break
+            if response.status_code == 200:
+                # Task still running
+                status_data = response.json()
+                if status_data["status"] == "FAILURE":
+                    # Task failed, check if it's a not found error
+                    if "not found" in status_data["result"].lower():
+                        # This should now return 404 instead of 200
+                        response = client.get(f"/status?task-id={task_id}")
+                        assert response.status_code == 404
+                        assert "not found" in response.json()["detail"].lower()
+                        break
+                    pytest.fail(f"Task failed with unexpected error: {status_data['result']}")
+                elif status_data["status"] != "PENDING":
+                    pytest.fail(f"Task completed with unexpected status: {status_data['status']}")
+                time.sleep(0.1)
+            else:
+                pytest.fail(f"Unexpected status code: {response.status_code}")
 
     def test_health_check_with_celery(self, client):
         """Test health check endpoint with Celery enabled."""
