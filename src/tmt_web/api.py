@@ -221,14 +221,15 @@ def root(
     # Disable Celery if not needed
     if os.environ.get("USE_CELERY") == "false":
         logger.debug("Celery disabled, processing request synchronously")
-        response_by_output = {
-            "html": HTMLResponse,
-            "json": JSONResponse,
-            "yaml": PlainTextResponse,
-        }
-
-        response = response_by_output.get(out_format, PlainTextResponse)
-        return response(service.main(**service_args))
+        result = service.main(**service_args)
+        # Handle each format differently
+        if out_format == "html":
+            return HTMLResponse(content=result)
+        if out_format == "json":
+            # Parse JSON string to dict, then return as JSONResponse
+            return JSONResponse(content=json.loads(result))
+        # yaml
+        return PlainTextResponse(content=result)
 
     logger.debug("Processing request asynchronously with Celery")
     r = service.main.delay(**service_args)
