@@ -1,9 +1,13 @@
+"""HTML generator for tmt-web."""
+
 from pathlib import Path
 
 from celery.result import AsyncResult
 from jinja2 import Environment, FileSystemLoader, TemplateNotFound
-from tmt import Logger, Plan, Test
+from tmt import Logger
 from tmt.utils import GeneralError
+
+from tmt_web.models import PlanData, TestData
 
 # Template directory is in the tmt_web package
 TEMPLATE_DIR = Path(__file__).resolve().parents[1] / "templates"
@@ -35,7 +39,7 @@ def _render_template(template_name: str, logger: Logger, **kwargs) -> str:
         raise GeneralError(f"Failed to render template '{template_name}'") from err
 
 
-def generate_status_callback(result: AsyncResult, status_callback_url: str, logger: Logger) -> str:  # type: ignore [type-arg]
+def generate_status_callback(result: AsyncResult, status_callback_url: str, logger: Logger) -> str:  # type: ignore[type-arg]
     """
     Generate HTML status callback page.
 
@@ -54,11 +58,11 @@ def generate_status_callback(result: AsyncResult, status_callback_url: str, logg
     return _render_template("status_callback.html.j2", logger=logger, **data)
 
 
-def generate_html_page(obj: Test | Plan, logger: Logger) -> str:
+def generate_html_page(obj: TestData | PlanData, logger: Logger) -> str:
     """
     Generate HTML page for a test or plan.
 
-    :param obj: Test or Plan object to render
+    :param obj: TestData or PlanData object to render
     :param logger: Logger instance for logging
     :return: Rendered HTML page
     :raises: GeneralError if template rendering fails
@@ -69,12 +73,12 @@ def generate_html_page(obj: Test | Plan, logger: Logger) -> str:
     return result
 
 
-def generate_testplan_html_page(test: Test, plan: Plan, logger: Logger) -> str:
+def generate_testplan_html_page(test: TestData, plan: PlanData, logger: Logger) -> str:
     """
     Generate HTML page for both test and plan.
 
-    :param test: Test object to render
-    :param plan: Plan object to render
+    :param test: TestData object to render
+    :param plan: PlanData object to render
     :param logger: Logger instance for logging
     :return: Rendered HTML page
     :raises: GeneralError if template rendering fails

@@ -1,5 +1,8 @@
+"""Service layer for tmt-web."""
+
 import logging
-from typing import Literal, TypeVar
+from os import environ
+from typing import Literal
 
 import tmt
 from celery.app import Celery  # type: ignore[attr-defined]
@@ -8,16 +11,15 @@ from tmt._compat.pathlib import Path
 from tmt.utils import GeneralError, GitUrlError
 
 from tmt_web import settings
-from tmt_web.generators import html_generator, json_generator, yaml_generator
+from tmt_web.converters import create_testplan_data, plan_to_model, test_to_model
+from tmt_web.formatters import format_data, serialize_data
+from tmt_web.models import PlanData, TestData, TestPlanData
 from tmt_web.utils import git_handler
 
 # Create main logger for the application
 logger = Logger(logging.getLogger("tmt-web"))
 
 app = Celery(__name__, broker=settings.REDIS_URL, backend=settings.REDIS_URL)
-
-# Type variable for Test/Plan objects
-T = TypeVar('T', tmt.Test, tmt.Plan)
 
 
 def get_tree(url: str, name: str, ref: str | None, tree_path: str | None) -> tmt.base.Tree:
@@ -57,51 +59,22 @@ def get_tree(url: str, name: str, ref: str | None, tree_path: str | None) -> tmt
     return tree
 
 
-def format_output(obj: tmt.Test | tmt.Plan, out_format: str, logger: Logger) -> str:
-    """
-    Format a Test or Plan object in the specified output format.
-
-    :param obj: Test or Plan object to format
-    :param out_format: Output format (html, json, or yaml)
-    :param logger: Logger instance
-    :return: Formatted output string
-    :raises: GeneralError if format not supported
-    """
-    logger.debug(f"Generating {out_format} output")
-    match out_format:
-        case "html":
-            return html_generator.generate_html_page(obj, logger=logger)
-        case "json":
-            if isinstance(obj, tmt.Test):
-                return json_generator.generate_test_json(obj, logger=logger)
-            return json_generator.generate_plan_json(obj, logger=logger)
-        case "yaml":
-            if isinstance(obj, tmt.Test):
-                return yaml_generator.generate_test_yaml(obj, logger=logger)
-            return yaml_generator.generate_plan_yaml(obj, logger=logger)
-        case _:
-            logger.fail(f"Unsupported output format: {out_format}")
-            raise GeneralError(f"Unsupported output format: {out_format}")
-
-
 def process_test_request(
     test_url: str,
     test_name: str,
     test_ref: str | None = None,
     test_path: str | None = None,
-    out_format: str = "json",
-) -> str:
+) -> TestData:
     """
-    Process a test request and return formatted output.
+    Process a test request and return test data.
 
     :param test_url: Test url
     :param test_name: Test name
     :param test_ref: Test repo ref (optional)
     :param test_path: Test path (optional)
-    :param out_format: Output format
-    :return: Formatted output string
+    :return: Test data model
     :raises: GitUrlError if URL is invalid
-    :raises: GeneralError if test not found or format not supported
+    :raises: GeneralError if test not found
     """
     tree = get_tree(test_url, test_name, test_ref, test_path)
     logger.debug(f"Looking for test: {test_name}")
@@ -115,7 +88,7 @@ def process_test_request(
     wanted_test = tests[0]
     logger.debug("Test found")
 
-    return format_output(wanted_test, out_format, logger)
+    return test_to_model(wanted_test)
 
 
 def process_plan_request(
@@ -123,19 +96,17 @@ def process_plan_request(
     plan_name: str,
     plan_ref: str | None = None,
     plan_path: str | None = None,
-    out_format: str = "json",
-) -> str:
+) -> PlanData:
     """
-    Process a plan request and return formatted output.
+    Process a plan request and return plan data.
 
     :param plan_url: Plan URL
     :param plan_name: Plan name
     :param plan_ref: Plan repo ref (optional)
     :param plan_path: Plan path (optional)
-    :param out_format: Output format
-    :return: Formatted output string
+    :return: Plan data model
     :raises: GitUrlError if URL is invalid
-    :raises: GeneralError if plan not found or format not supported
+    :raises: GeneralError if plan not found
     """
     tree = get_tree(plan_url, plan_name, plan_ref, plan_path)
     logger.debug(f"Looking for plan: {plan_name}")
@@ -149,7 +120,7 @@ def process_plan_request(
     wanted_plan = plans[0]
     logger.debug("Plan found")
 
-    return format_output(wanted_plan, out_format, logger)
+    return plan_to_model(wanted_plan)
 
 
 def process_testplan_request(
@@ -161,10 +132,9 @@ def process_testplan_request(
     plan_name: str,
     plan_ref: str | None,
     plan_path: str | None,
-    out_format: str,
-) -> str:
+) -> TestPlanData:
     """
-    Process a test and plan request and return formatted output.
+    Process a test and plan request and return combined data.
 
     :param test_url: Test URL
     :param test_name: Test name
@@ -174,10 +144,9 @@ def process_testplan_request(
     :param plan_name: Plan name
     :param plan_ref: Plan repo ref (optional)
     :param plan_path: Plan path (optional)
-    :param out_format: Output format
-    :return: Formatted output string
+    :return: Combined test and plan data model
     :raises: GitUrlError if URL is invalid
-    :raises: GeneralError if test/plan not found or format not supported
+    :raises: GeneralError if test/plan not found
     """
     # Get test and plan objects
     tree = get_tree(test_url, test_name, test_ref, test_path)
@@ -194,18 +163,7 @@ def process_testplan_request(
         raise GeneralError(f"Plan '{plan_name}' not found")
     plan = plans[0]
 
-    # Generate combined output
-    logger.debug(f"Generating {out_format} output")
-    match out_format:
-        case "html":
-            return html_generator.generate_testplan_html_page(test, plan, logger=logger)
-        case "json":
-            return json_generator.generate_testplan_json(test, plan, logger=logger)
-        case "yaml":
-            return yaml_generator.generate_testplan_yaml(test, plan, logger=logger)
-        case _:
-            logger.fail(f"Unsupported output format: {out_format}")
-            raise GeneralError(f"Unsupported output format: {out_format}")
+    return create_testplan_data(test, plan)
 
 
 @app.task
@@ -223,31 +181,40 @@ def main(
     """
     Main entry point for processing requests.
 
+    Returns serialized data that can be formatted later according to the requested format.
+    The actual formatting happens in the API layer when retrieving results.
+
     :raises: GeneralError for invalid argument combinations
     """
     logger.debug("Starting request processing")
     logger.debug("Validating input parameters")
 
+    data: TestData | PlanData | TestPlanData
     if test_name is not None and plan_name is None:
         if test_url is None:
             logger.fail("Missing required test parameters")
             raise GeneralError("Missing required test parameters")
-        return process_test_request(test_url, test_name, test_ref, test_path, out_format)
-
-    if plan_name is not None and test_name is None:
+        data = process_test_request(test_url, test_name, test_ref, test_path)
+    elif plan_name is not None and test_name is None:
         if plan_url is None:
             logger.fail("Missing required plan parameters")
             raise GeneralError("Missing required plan parameters")
-        return process_plan_request(plan_url, plan_name, plan_ref, plan_path, out_format)
-
-    if plan_name is not None and test_name is not None:
+        data = process_plan_request(plan_url, plan_name, plan_ref, plan_path)
+    elif plan_name is not None and test_name is not None:
         if test_url is None or plan_url is None:
             logger.fail("Missing required test/plan parameters")
             raise GeneralError("Missing required test/plan parameters")
-        return process_testplan_request(
+        data = process_testplan_request(
             test_url, test_name, test_ref, test_path,
             plan_url, plan_name, plan_ref, plan_path,
-            out_format)
+        )
+    else:
+        logger.fail("Invalid combination of test and plan parameters")
+        raise GeneralError("Invalid combination of test and plan parameters")
 
-    logger.fail("Invalid combination of test and plan parameters")
-    raise GeneralError("Invalid combination of test and plan parameters")
+    # Format immediately if Celery is disabled
+    if environ.get("USE_CELERY") == "false":
+        return format_data(data, out_format, logger)
+
+    # Otherwise store raw data for later formatting
+    return serialize_data(data)

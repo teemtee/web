@@ -1,3 +1,5 @@
+"""Unit tests for HTML generator."""
+
 import logging
 from unittest.mock import Mock
 
@@ -7,6 +9,7 @@ from jinja2 import TemplateNotFound
 from tmt.utils import GeneralError
 
 from tmt_web.generators import html_generator
+from tmt_web.models import FmfIdData, PlanData, TestData
 
 
 @pytest.fixture
@@ -15,35 +18,82 @@ def logger():
 
 
 @pytest.fixture
-def test_obj(logger):
-    return tmt.Tree(logger=logger).tests(names=["/tests/data/sample_test"])[0]
+def test_data():
+    """Create a test TestData object."""
+    return TestData(
+        name="sample-test",
+        summary="Sample test summary",
+        description="Sample test description",
+        contact=["Test Contact <test@example.com>"],
+        component=["component1"],
+        enabled=True,
+        environment={"KEY": "value"},
+        duration="15m",
+        framework="shell",
+        manual=False,
+        path="/path/to/test",
+        tier="1",
+        order=50,
+        id="test-123",
+        link=[{"name": "issue", "url": "https://example.com/issue/123"}],
+        tag=["tag1", "tag2"],
+        fmf_id=FmfIdData(
+            name="test",
+            url="https://example.com/test",
+            path="/path/to/test",
+            ref="main",
+        ),
+    )
 
 
 @pytest.fixture
-def plan_obj(logger):
-    return tmt.Tree(logger=logger).plans(names=["/tests/data/sample_plan"])[0]
+def plan_data():
+    """Create a test PlanData object."""
+    return PlanData(
+        name="sample-plan",
+        summary="Sample plan summary",
+        description="Sample plan description",
+        prepare=[{"how": "shell", "script": "prepare.sh"}],
+        execute=[{"how": "tmt"}],
+        finish=[{"how": "shell", "script": "cleanup.sh"}],
+        discover={"how": "fmf"},
+        provision={"how": "local"},
+        report={"how": "html"},
+        enabled=True,
+        path="/path/to/plan",
+        order=100,
+        id="plan-456",
+        link=[{"name": "docs", "url": "https://example.com/docs"}],
+        tag=["plan-tag1", "plan-tag2"],
+        fmf_id=FmfIdData(
+            name="plan",
+            url="https://example.com/plan",
+            path="/path/to/plan",
+            ref="main",
+        ),
+    )
 
 
 class TestHtmlGenerator:
     """Test HTML generation for tests, plans, and status pages."""
 
-    def test_generate_test_html(self, test_obj, logger):
+    def test_generate_test_html(self, test_data, logger):
         """Test generating HTML for a test object."""
-        data = html_generator.generate_html_page(test_obj, logger)
+        data = html_generator.generate_html_page(test_data, logger)
 
         # Check basic structure
         assert '<!DOCTYPE html>' in data
         assert '<html lang="en">' in data
-        assert f'<title>{test_obj.name}</title>' in data
+        assert f'<title>{test_data.name}</title>' in data
 
         # Check content
-        assert f'<h1>{test_obj.name}</h1>' in data
-        assert f'<p><strong>Name:</strong> {test_obj.name}</p>' in data
-        assert test_obj.summary in data
+        assert f'<h1>{test_data.name}</h1>' in data
+        assert f'<p><strong>Name:</strong> {test_data.name}</p>' in data
+        assert test_data.summary in data
 
-    def test_generate_testplan_html(self, test_obj, plan_obj, logger):
+    def test_generate_testplan_html(self, test_data, plan_data, logger):
         """Test generating HTML for combined test and plan view."""
-        data = html_generator.generate_testplan_html_page(test_obj, plan_obj, logger)
+        data = html_generator.generate_testplan_html_page(test_data, plan_data, logger)
 
         # Check basic structure
         assert '<!DOCTYPE html>' in data
@@ -52,13 +102,13 @@ class TestHtmlGenerator:
 
         # Check test content
         assert 'Test Information' in data
-        assert f'<p><strong>Name:</strong> {test_obj.name}</p>' in data
-        assert test_obj.summary in data
+        assert f'<p><strong>Name:</strong> {test_data.name}</p>' in data
+        assert test_data.summary in data
 
         # Check plan content
         assert 'Plan Information' in data
-        assert f'<p><strong>Name:</strong> {plan_obj.name}</p>' in data
-        assert plan_obj.summary in data
+        assert f'<p><strong>Name:</strong> {plan_data.name}</p>' in data
+        assert plan_data.summary in data
 
     def test_generate_status_callback_pending(self, logger):
         """Test status callback page for pending task."""

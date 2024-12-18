@@ -1,9 +1,11 @@
+"""API layer for tmt-web."""
+
 import json
 import logging
-import os
 import platform
 import time
 from datetime import UTC, datetime
+from os import environ
 from typing import Annotated, Any, Literal
 
 from celery.result import AsyncResult
@@ -13,9 +15,10 @@ from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, Red
 from pydantic import BaseModel
 from tmt import Logger
 from tmt import __version__ as tmt_version
-from tmt.utils import GeneralError, dict_to_yaml
+from tmt.utils import GeneralError
 
 from tmt_web import service, settings
+from tmt_web.formatters import deserialize_data, format_data
 from tmt_web.generators import html_generator
 
 # Record start time for uptime calculation
@@ -101,31 +104,8 @@ def _validate_parameters(
         )
 
 
-def _handle_successful_task_result(
-    result: Any | BaseException,
-    out_format: str,
-) -> HTMLResponse | JSONResponse | PlainTextResponse:
-    """Handle successful task result based on format."""
-    # Convert result to string if it's not already
-    result_str = str(result)
-
-    if out_format == "html":
-        return HTMLResponse(content=result_str)
-    if out_format == "yaml":
-        try:
-            result_dict = json.loads(result_str)
-            return PlainTextResponse(dict_to_yaml(result_dict))
-        except json.JSONDecodeError:
-            return PlainTextResponse(result_str)
-    # json
-    try:
-        return JSONResponse(content=json.loads(result_str))
-    except json.JSONDecodeError:
-        return JSONResponse(content={"result": result_str})
-
-
 def _handle_task_result(
-    task_result: AsyncResult[Any],
+    task_result: AsyncResult,  # type: ignore[type-arg]
     out_format: str,
 ) -> HTMLResponse | JSONResponse | PlainTextResponse:
     """Handle task result and return appropriate response."""
@@ -138,7 +118,26 @@ def _handle_task_result(
             )
 
     if task_result.successful() and task_result.result:
-        return _handle_successful_task_result(task_result.result, out_format)
+        try:
+            logger.debug(f"Task result: {task_result.result}")
+            # Deserialize the stored data and format it according to the requested format
+            result_str = str(task_result.result)  # Ensure we have a string
+            data = deserialize_data(result_str)
+            logger.debug(f"Deserialized data: {data}")
+            formatted_result = format_data(data, out_format, logger)
+            logger.debug(f"Formatted result: {formatted_result}")
+
+            if out_format == "html":
+                return HTMLResponse(content=formatted_result)
+            if out_format == "yaml":
+                return PlainTextResponse(content=formatted_result)
+            return JSONResponse(content=json.loads(formatted_result))
+        except Exception as e:
+            logger.fail(f"Error handling task result: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Error handling task result: {e}",
+            ) from e
 
     task_out = _to_task_out(task_result, out_format)
     return JSONResponse(content=task_out.model_dump())
@@ -319,12 +318,12 @@ def root(
     }
 
     # Process request based on Celery configuration
-    if os.environ.get("USE_CELERY") == "false":
+    if environ.get("USE_CELERY") == "false":
         return _process_synchronous_request(service_args, out_format)
     return _process_async_request(service_args, out_format)
 
 
-@app.get("/status", response_model=TaskOut)
+@app.get("/status")
 def get_task_status(task_id: Annotated[str | None,
             Query(
                 alias="task-id",
@@ -388,7 +387,7 @@ def get_task_status_html(task_id: Annotated[str | None,
     )
 
 
-def _to_task_out(r: AsyncResult[Any], out_format: str = "json") -> TaskOut:
+def _to_task_out(r: AsyncResult, out_format: str = "json") -> TaskOut:  # type: ignore[type-arg]
     """Convert a Celery AsyncResult to a TaskOut response model."""
     # Use the appropriate status callback URL based on the requested format
     status_callback_url = f"{settings.API_HOSTNAME}/status"
@@ -404,7 +403,7 @@ def _to_task_out(r: AsyncResult[Any], out_format: str = "json") -> TaskOut:
     )
 
 
-@app.get("/health", response_model=HealthStatus)
+@app.get("/health")
 def health_check() -> HealthStatus:
     """Health check endpoint providing detailed system and service status.
 
@@ -418,7 +417,7 @@ def health_check() -> HealthStatus:
     logger.debug("Health check requested")
 
     # Check Celery/Redis status
-    celery_enabled = os.environ.get("USE_CELERY") != "false"
+    celery_enabled = environ.get("USE_CELERY") != "false"
     celery_status = "ok"
     redis_status = "ok"
 

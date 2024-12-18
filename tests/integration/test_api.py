@@ -1,3 +1,5 @@
+"""Integration tests for the API."""
+
 import os
 import time
 
@@ -264,7 +266,7 @@ class TestCelery:
             "/?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke&format=yaml",
         )
         assert response.status_code == 200
-        json_data = response.json()
+        json_data = response.json()  # Status responses are always JSON
         while True:
             if json_data["status"] == "PENDING":
                 response = client.get("/status?task-id=" + json_data["id"])
@@ -272,11 +274,14 @@ class TestCelery:
                 json_data = response.json()
                 time.sleep(0.1)
             elif json_data["status"] == "SUCCESS":
-                result = json_data["result"]
-                assert "500" not in result
+                # Get the final result in YAML format
+                response = client.get(f"/?task-id={json_data['id']}&format=yaml")
+                assert response.status_code == 200
+                data = response.content.decode("utf-8")
+                assert "500" not in data
                 assert (
                     "url: https://github.com/teemtee/tmt/tree/main/tests/core/smoke/main.fmf"
-                    in result
+                    in data
                 )
                 break
             elif json_data["status"] == "FAILURE":
@@ -316,7 +321,7 @@ class TestCelery:
             "/?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke&format=yaml",
         )
         assert response.status_code == 200
-        task_data = response.json()
+        task_data = response.json()  # Status responses are always JSON
         task_id = task_data["id"]
 
         # Wait for task to complete

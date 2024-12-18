@@ -25,9 +25,10 @@ repos:
           - 'tmt'
           - 'pydantic'
           - 'celery-types'
+        pass_filenames: false
 
   - repo: https://github.com/charliermarsh/ruff-pre-commit
-    rev: v0.7.1
+    rev: v0.8.3
     hooks:
       - id: ruff
         args:
