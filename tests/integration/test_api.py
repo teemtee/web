@@ -4,6 +4,7 @@ import time
 import pytest
 from fastapi.testclient import TestClient
 
+from tmt_web import settings
 from tmt_web.api import app
 
 
@@ -26,7 +27,9 @@ class TestApi:
         assert response.headers["location"] == "/docs"
 
     def test_basic_test_request_json(self, client):
-        response = client.get("/?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke&test-ref=main")
+        response = client.get(
+            "/?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke&test-ref=main",
+        )
         assert response.status_code == 200
         data = response.content.decode("utf-8")
         assert "500" not in data
@@ -37,7 +40,8 @@ class TestApi:
             "/?test-url=https://github.com/teemtee/tmt.git"
             "&test-name=/test/shell/weird"
             "&test-path=/tests/execute/basic/data"
-            "&test-ref=main")
+            "&test-ref=main",
+        )
         assert response.status_code == 200
         data = response.content.decode("utf-8")
         assert "500" not in data
@@ -45,7 +49,8 @@ class TestApi:
 
     def test_basic_test_request_html(self, client):
         response = client.get(
-            "/?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke&test-ref=main&format=html")
+            "/?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke&test-ref=main&format=html",
+        )
         assert response.status_code == 200
         data = response.content.decode("utf-8")
         assert "500" not in data
@@ -53,22 +58,28 @@ class TestApi:
         assert "Just a basic smoke test" in data
 
     def test_basic_test_request_yaml(self, client):
-        response = client.get("/?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke&format=yaml")
+        response = client.get(
+            "/?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke&format=yaml",
+        )
         assert response.status_code == 200
         data = response.content.decode("utf-8")
         assert "500" not in data
         assert "url: https://github.com/teemtee/tmt/tree/main/tests/core/smoke/main.fmf" in data
 
     def test_basic_plan_request(self, client):
-        response = client.get("/?plan-url=https://github.com/teemtee/tmt&plan-name=/plans/features/basic&type=plan")
+        response = client.get(
+            "/?plan-url=https://github.com/teemtee/tmt&plan-name=/plans/features/basic&type=plan",
+        )
         assert response.status_code == 200
         data = response.content.decode("utf-8")
         assert "500" not in data
         assert "https://github.com/teemtee/tmt/tree/main/plans/features/basic.fmf" in data
 
     def test_basic_testplan_request(self, client):
-        response = client.get("/?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke&"
-                              "plan-url=https://github.com/teemtee/tmt&plan-name=/plans/features/basic&type=plan")
+        response = client.get(
+            "/?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke&"
+            "plan-url=https://github.com/teemtee/tmt&plan-name=/plans/features/basic&type=plan",
+        )
         assert response.status_code == 200
         data = response.content.decode("utf-8")
         assert "500" not in data
@@ -98,25 +109,33 @@ class TestApi:
         assert "Both plan-url and plan-name must be provided together" in data
 
     def test_invalid_testplan_arguments(self, client):
-        response = client.get("/?test-url=https://github.com/teemtee/tmt&plan-url=https://github.com/teemtee/tmt&"
-                              "plan-name=/plans/features/basic")
+        response = client.get(
+            "/?test-url=https://github.com/teemtee/tmt&plan-url=https://github.com/teemtee/tmt&"
+            "plan-name=/plans/features/basic",
+        )
         assert response.status_code == 400
         data = response.content.decode("utf-8")
         assert "Both test-url and test-name must be provided together" in data
 
     def test_invalid_argument_names(self, client):
-        response = client.get("/?test_urlur=https://github.com/teemtee/tmt&test_nn=/tests/core/smoke")
+        response = client.get(
+            "/?test_urlur=https://github.com/teemtee/tmt&test_nn=/tests/core/smoke",
+        )
         assert response.status_code == 400
         data = response.content.decode("utf-8")
         assert "At least one of test or plan parameters must be provided" in data
 
     def test_not_found_errors(self, client):
         """Test that missing tests/plans return 404."""
-        response = client.get("/?test-url=https://github.com/teemtee/tmt&test-name=/nonexistent/test")
+        response = client.get(
+            "/?test-url=https://github.com/teemtee/tmt&test-name=/nonexistent/test",
+        )
         assert response.status_code == 404
         assert "not found" in response.json()["detail"].lower()
 
-        response = client.get("/?plan-url=https://github.com/teemtee/tmt&plan-name=/nonexistent/plan")
+        response = client.get(
+            "/?plan-url=https://github.com/teemtee/tmt&plan-name=/nonexistent/plan",
+        )
         assert response.status_code == 404
         assert "not found" in response.json()["detail"].lower()
 
@@ -181,7 +200,9 @@ class TestCelery:
         os.environ["USE_CELERY"] = "true"
 
     def test_basic_test_request_json(self, client):
-        response = client.get("/?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke")
+        response = client.get(
+            "/?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke",
+        )
         assert response.status_code == 200
         json_data = response.json()
         while True:
@@ -193,7 +214,9 @@ class TestCelery:
             elif json_data["status"] == "SUCCESS":
                 result = json_data["result"]
                 assert "500" not in result
-                assert "https://github.com/teemtee/tmt/tree/main/tests/core/smoke/main.fmf" in result
+                assert (
+                    "https://github.com/teemtee/tmt/tree/main/tests/core/smoke/main.fmf" in result
+                )
                 break
             elif json_data["status"] == "FAILURE":
                 pytest.fail("status = FAILURE: " + json_data["result"])
@@ -201,7 +224,9 @@ class TestCelery:
                 pytest.fail("Unknown status: " + json_data["status"])
 
     def test_basic_test_request_html(self, client):
-        response = client.get("/?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke&format=html")
+        response = client.get(
+            "/?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke&format=html",
+        )
         assert response.status_code == 200
         data = response.content.decode("utf-8")
         assert "Processing..." in data
@@ -212,20 +237,32 @@ class TestCelery:
 
         # Poll until complete
         while True:
-            response = client.get(f"/status/html?task-id={task_id}")
-            assert response.status_code == 200
-            data = response.content.decode("utf-8")
-            if "Processing..." in data:
-                time.sleep(0.1)
-                continue
-            if "Task Failed" in data:
-                pytest.fail("Task failed: " + data)
-            else:
+            response = client.get(f"/status/html?task-id={task_id}", follow_redirects=False)
+            if response.status_code == 303:  # Redirect to root endpoint
+                assert (
+                    response.headers["location"]
+                    == f"{settings.API_HOSTNAME}/?task-id={task_id}&format=html"
+                )
+                # Follow redirect to get final result
+                response = client.get(response.headers["location"])
+                assert response.status_code == 200
+                data = response.content.decode("utf-8")
                 assert "Just a basic smoke test" in data
                 break
+            if response.status_code == 200:
+                data = response.content.decode("utf-8")
+                if "Processing..." in data:
+                    time.sleep(0.1)
+                    continue
+                if "Task Failed" in data:
+                    pytest.fail("Task failed: " + data)
+            else:
+                pytest.fail(f"Unexpected status code: {response.status_code}")
 
     def test_basic_test_request_yaml(self, client):
-        response = client.get("/?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke&format=yaml")
+        response = client.get(
+            "/?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke&format=yaml",
+        )
         assert response.status_code == 200
         json_data = response.json()
         while True:
@@ -237,12 +274,100 @@ class TestCelery:
             elif json_data["status"] == "SUCCESS":
                 result = json_data["result"]
                 assert "500" not in result
-                assert "url: https://github.com/teemtee/tmt/tree/main/tests/core/smoke/main.fmf" in result
+                assert (
+                    "url: https://github.com/teemtee/tmt/tree/main/tests/core/smoke/main.fmf"
+                    in result
+                )
                 break
             elif json_data["status"] == "FAILURE":
                 pytest.fail("status = FAILURE: " + json_data["result"])
             else:
                 pytest.fail("Unknown status: " + json_data["status"])
+
+    def test_root_endpoint_with_task_id(self, client):
+        """Test retrieving task results directly through root endpoint."""
+        # First create a task
+        response = client.get(
+            "/?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke",
+        )
+        assert response.status_code == 200
+        task_data = response.json()
+        task_id = task_data["id"]
+
+        # Wait for task to complete
+        while True:
+            response = client.get(f"/status?task-id={task_id}")
+            json_data = response.json()
+            if json_data["status"] == "SUCCESS":
+                break
+            time.sleep(0.1)
+
+        # Now test retrieving the result directly through root endpoint
+        response = client.get(f"/?task-id={task_id}")
+        assert response.status_code == 200
+        data = response.content.decode("utf-8")
+        assert "500" not in data
+        assert "https://github.com/teemtee/tmt/tree/main/tests/core/smoke/main.fmf" in data
+
+    def test_root_endpoint_with_task_id_yaml(self, client):
+        """Test retrieving task results in YAML format through root endpoint."""
+        # First create a task
+        response = client.get(
+            "/?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke&format=yaml",
+        )
+        assert response.status_code == 200
+        task_data = response.json()
+        task_id = task_data["id"]
+
+        # Wait for task to complete
+        while True:
+            response = client.get(f"/status?task-id={task_id}")
+            json_data = response.json()
+            if json_data["status"] == "SUCCESS":
+                break
+            time.sleep(0.1)
+
+        # Now test retrieving the result directly through root endpoint
+        response = client.get(f"/?task-id={task_id}&format=yaml")
+        assert response.status_code == 200
+        data = response.content.decode("utf-8")
+        assert "500" not in data
+        assert "url: https://github.com/teemtee/tmt/tree/main/tests/core/smoke/main.fmf" in data
+
+    def test_root_endpoint_with_task_id_html(self, client):
+        """Test retrieving task results in HTML format through root endpoint."""
+        # First create a task
+        response = client.get(
+            "/?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke&format=html",
+        )
+        assert response.status_code == 200
+        task_id = response.content.decode("utf-8").split("task-id=")[1].split('"')[0]
+
+        # Wait for task to complete and get redirected
+        while True:
+            response = client.get(f"/status/html?task-id={task_id}", follow_redirects=False)
+            if response.status_code == 303:  # Redirect to root endpoint
+                assert (
+                    response.headers["location"]
+                    == f"{settings.API_HOSTNAME}/?task-id={task_id}&format=html"
+                )
+                # Follow redirect to get final result
+                response = client.get(response.headers["location"])
+                assert response.status_code == 200
+                data = response.content.decode("utf-8")
+                assert "500" not in data
+                assert '<html lang="en">' in data
+                assert "Just a basic smoke test" in data
+                break
+            time.sleep(0.1)
+
+    def test_root_endpoint_with_invalid_task_id(self, client):
+        """Test root endpoint with invalid task ID."""
+        response = client.get("/?task-id=invalid-task-id")
+        assert response.status_code == 200  # Returns 200 with pending status
+        data = response.json()
+        assert data["status"] == "PENDING"
+        assert data["id"] == "invalid-task-id"
 
     def test_status_html_endpoint_missing_task_id(self, client):
         response = client.get("/status/html")
@@ -273,7 +398,9 @@ class TestCelery:
     def test_not_found_with_celery(self, client):
         """Test that missing tests/plans return 404 with Celery."""
         # Initial request creates a task
-        response = client.get("/?test-url=https://github.com/teemtee/tmt&test-name=/nonexistent/test")
+        response = client.get(
+            "/?test-url=https://github.com/teemtee/tmt&test-name=/nonexistent/test",
+        )
         assert response.status_code == 200
         task_data = response.json()
         task_id = task_data["id"]

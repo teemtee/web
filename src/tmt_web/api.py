@@ -4,7 +4,7 @@ import os
 import platform
 import time
 from datetime import UTC, datetime
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 from celery.result import AsyncResult
 from fastapi import FastAPI, HTTPException, Request, status
@@ -74,6 +74,109 @@ class HealthStatus(BaseModel):
     system: SystemInfo
 
 
+def _validate_parameters(
+    test_url: str | None,
+    test_name: str | None,
+    plan_url: str | None,
+    plan_name: str | None,
+) -> None:
+    """Validate request parameters."""
+    if (test_url is None and test_name is not None) or (test_url is not None and test_name is None):
+        logger.fail("Both test-url and test-name must be provided together")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Both test-url and test-name must be provided together",
+        )
+    if (plan_url is None and plan_name is not None) or (plan_url is not None and plan_name is None):
+        logger.fail("Both plan-url and plan-name must be provided together")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Both plan-url and plan-name must be provided together",
+        )
+    if plan_url is None and plan_name is None and test_url is None and test_name is None:
+        logger.fail("At least one of test or plan parameters must be provided")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="At least one of test or plan parameters must be provided",
+        )
+
+
+def _handle_successful_task_result(
+    result: Any | BaseException,
+    out_format: str,
+) -> HTMLResponse | JSONResponse | PlainTextResponse:
+    """Handle successful task result based on format."""
+    # Convert result to string if it's not already
+    result_str = str(result)
+
+    if out_format == "html":
+        return HTMLResponse(content=result_str)
+    if out_format == "yaml":
+        try:
+            result_dict = json.loads(result_str)
+            return PlainTextResponse(dict_to_yaml(result_dict))
+        except json.JSONDecodeError:
+            return PlainTextResponse(result_str)
+    # json
+    try:
+        return JSONResponse(content=json.loads(result_str))
+    except json.JSONDecodeError:
+        return JSONResponse(content={"result": result_str})
+
+
+def _handle_task_result(
+    task_result: AsyncResult[Any],
+    out_format: str,
+) -> HTMLResponse | JSONResponse | PlainTextResponse:
+    """Handle task result and return appropriate response."""
+    if task_result.failed():
+        error_message = str(task_result.result)
+        if "not found" in error_message.lower():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=error_message,
+            )
+
+    if task_result.successful() and task_result.result:
+        return _handle_successful_task_result(task_result.result, out_format)
+
+    task_out = _to_task_out(task_result, out_format)
+    return JSONResponse(content=task_out.model_dump())
+
+
+def _process_synchronous_request(
+    service_args: dict[str, Any],
+    out_format: str,
+) -> HTMLResponse | JSONResponse | PlainTextResponse:
+    """Process request synchronously without Celery."""
+    logger.debug("Celery disabled, processing request synchronously")
+    result = service.main(**service_args)
+    if out_format == "html":
+        return HTMLResponse(content=result)
+    if out_format == "json":
+        return JSONResponse(content=json.loads(result))
+    return PlainTextResponse(content=result)
+
+
+def _process_async_request(
+    service_args: dict[str, Any],
+    out_format: str,
+) -> HTMLResponse | JSONResponse:
+    """Process request asynchronously with Celery."""
+    logger.debug("Processing request asynchronously with Celery")
+    task_result = service.main.delay(**service_args)
+
+    if out_format == "html":
+        logger.debug("Generating HTML status callback")
+        status_callback_url = f"{settings.API_HOSTNAME}/status/html?task-id={task_result.task_id}"
+        return HTMLResponse(content=html_generator.generate_status_callback(
+            task_result, status_callback_url, logger),
+        )
+
+    task_out = _to_task_out(task_result, out_format)
+    return JSONResponse(content=task_out.model_dump())
+
+
 @app.exception_handler(GeneralError)
 async def general_exception_handler(request: Request, exc: GeneralError):
     """Global exception handler for all tmt errors."""
@@ -102,6 +205,14 @@ async def general_exception_handler(request: Request, exc: GeneralError):
 @app.get("/", response_model=TaskOut | str)
 def root(
         request: Request,
+        task_id: Annotated[
+            str | None,
+            Query(
+                alias="task-id",
+                title="Task ID",
+                description="ID of an existing task to retrieve results for",
+            ),
+        ] = None,
         test_url: Annotated[
             str | None,
             Query(
@@ -185,26 +296,15 @@ def root(
     if not request.query_params:
         return RedirectResponse(url="/docs")
 
-    # Parameter validations
+    # If task_id is provided, return the task status directly
+    if task_id:
+        logger.debug(f"Fetching existing task status for {task_id}")
+        task_result = service.main.app.AsyncResult(task_id)
+        return _handle_task_result(task_result, out_format)
+
+    # Parameter validations for new task creation
     logger.debug("Validating request parameters")
-    if (test_url is None and test_name is not None) or (test_url is not None and test_name is None):
-        logger.fail("Both test-url and test-name must be provided together")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Both test-url and test-name must be provided together",
-        )
-    if (plan_url is None and plan_name is not None) or (plan_url is not None and plan_name is None):
-        logger.fail("Both plan-url and plan-name must be provided together")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Both plan-url and plan-name must be provided together",
-        )
-    if plan_url is None and plan_name is None and test_url is None and test_name is None:
-        logger.fail("At least one of test or plan parameters must be provided")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="At least one of test or plan parameters must be provided",
-        )
+    _validate_parameters(test_url, test_name, plan_url, plan_name)
 
     service_args = {
         "test_url": test_url,
@@ -218,33 +318,10 @@ def root(
         "plan_path": plan_path,
     }
 
-    # Disable Celery if not needed
+    # Process request based on Celery configuration
     if os.environ.get("USE_CELERY") == "false":
-        logger.debug("Celery disabled, processing request synchronously")
-        result = service.main(**service_args)
-        # Handle each format differently
-        if out_format == "html":
-            return HTMLResponse(content=result)
-        if out_format == "json":
-            # Parse JSON string to dict, then return as JSONResponse
-            return JSONResponse(content=json.loads(result))
-        # yaml
-        return PlainTextResponse(content=result)
-
-    logger.debug("Processing request asynchronously with Celery")
-    r = service.main.delay(**service_args)
-
-    # Handle response based on format
-    if out_format == "html":
-        logger.debug("Generating HTML status callback")
-        status_callback_url = f"{settings.API_HOSTNAME}/status/html?task-id={r.task_id}"
-        return HTMLResponse(
-            content=html_generator.generate_status_callback(r, status_callback_url, logger),
-        )
-
-    # For both JSON and YAML formats, return JSON initially with appropriate callback URL
-    task_out = _to_task_out(r, out_format)
-    return JSONResponse(content=task_out.model_dump())
+        return _process_synchronous_request(service_args, out_format)
+    return _process_async_request(service_args, out_format)
 
 
 @app.get("/status", response_model=TaskOut)
@@ -278,49 +355,6 @@ def get_task_status(task_id: Annotated[str | None,
     return _to_task_out(r)
 
 
-@app.get("/status/yaml", response_class=PlainTextResponse)
-def get_task_status_yaml(task_id: Annotated[str | None,
-            Query(
-                alias="task-id",
-                title="Task ID",
-                description="ID of the task to check status for",
-            ),
-        ]) -> PlainTextResponse:
-    """Get the status of an asynchronous task in YAML format."""
-    logger.debug(f"Getting YAML task status for {task_id}")
-    if not task_id:
-        logger.fail("task-id is required")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="task-id is required",
-        )
-
-    r = service.main.app.AsyncResult(task_id)
-
-    # Check for specific error conditions in the task result
-    if r.failed():
-        error_message = str(r.result)
-        if "not found" in error_message.lower():
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=error_message,
-            )
-
-    # For YAML format, we only return the result in YAML format when the task is successful
-    if r.successful() and r.result:
-        try:
-            # The result might be a JSON string, so we need to parse it first
-            result_dict = json.loads(r.result)
-            return PlainTextResponse(dict_to_yaml(result_dict))
-        except json.JSONDecodeError:
-            # If it's not JSON, return the raw result
-            return PlainTextResponse(r.result)
-
-    # For pending or failed tasks, return a JSON response
-    task_out = _to_task_out(r, "yaml")
-    return JSONResponse(content=task_out.model_dump())
-
-
 @app.get("/status/html", response_class=HTMLResponse)
 def get_task_status_html(task_id: Annotated[str | None,
             Query(
@@ -340,7 +374,12 @@ def get_task_status_html(task_id: Annotated[str | None,
 
     r = service.main.app.AsyncResult(task_id)
     if r.successful() and r.result:
-        return HTMLResponse(content=r.result)
+        # For successful tasks, redirect to root endpoint
+        return RedirectResponse(
+            url=f"{settings.API_HOSTNAME}/?task-id={r.task_id}&format=html",
+            status_code=303,  # Use 303 See Other for GET redirects
+        )
+
     status_callback_url = (
         f"{settings.API_HOSTNAME}/status/html?task-id={r.task_id}"
     )
@@ -349,13 +388,11 @@ def get_task_status_html(task_id: Annotated[str | None,
     )
 
 
-def _to_task_out(r: AsyncResult, out_format: str = "json") -> TaskOut:  # type: ignore [type-arg]
+def _to_task_out(r: AsyncResult[Any], out_format: str = "json") -> TaskOut:
     """Convert a Celery AsyncResult to a TaskOut response model."""
     # Use the appropriate status callback URL based on the requested format
     status_callback_url = f"{settings.API_HOSTNAME}/status"
-    if out_format == "yaml":
-        status_callback_url += "/yaml"
-    elif out_format == "html":
+    if out_format == "html":
         status_callback_url += "/html"
     status_callback_url += f"?task-id={r.task_id}"
 
