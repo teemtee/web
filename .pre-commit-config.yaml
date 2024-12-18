@@ -1,7 +1,7 @@
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: "v4.6.0"
+    rev: "v5.0.0"
     hooks:
       - id: check-merge-conflict
       - id: check-symlinks
@@ -17,7 +17,7 @@ repos:
 
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: "v1.11.1"
+    rev: "v1.13.0"  # Also update in pyproject.toml
     hooks:
       - id: mypy
         language_version: "3.12"
@@ -25,11 +25,13 @@ repos:
           - 'tmt'
           - 'pydantic'
           - 'celery-types'
+        pass_filenames: false
 
   - repo: https://github.com/charliermarsh/ruff-pre-commit
-    rev: v0.6.1
+    rev: v0.8.3
     hooks:
       - id: ruff
         args:
           - '--fix'
           - '--show-fixes'
+      - id: ruff-format

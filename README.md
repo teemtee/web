@@ -15,15 +15,17 @@ Add `-d` for the service to run in the background.
 In order to quickly experiment without using Celery use this:
 
 ```bash
-USE_CELERY=false CLONE_DIR_PATH=/tmp/test uvicorn api:app --reload --host 0.0.0.0 --port 8000
+USE_CELERY=false CLONE_DIR_PATH=/var/tmp/test uvicorn tmt_web.api:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ## Tests
 
 To run the tests, use the `pytest` command (assuming the service is running).
 
-Alternatively, if you have `hatch` installed, `hatch run test:run` command will
+Alternatively, if you have `hatch` installed, `hatch run dev:test` command will
 rebuild, start the service and run the tests.
+
+Run `hatch env show` to see the list of available environments and their scripts.
 
 ## Environment variables
 
@@ -65,9 +67,8 @@ if `format` is set to `html`.
   * `plan-name` - Name of the plan - accepts a `string`
 
   * `format` - Format of the output - accepts a `string`, default is
-    `json`, other options are `xml`, `html` (serves as a basic
+    `json`, other options are `yaml`, `html` (serves as a basic
     human-readable output format)
-  * `id` - Unique ID of the tmt object
 
 ### `/status`
 
@@ -85,3 +86,11 @@ simple HTML formatting.
 ### `/health`
 
 Returns a health status of the service.
+
+## Attribution
+
+The web interface design is based on the work of
+[Fedora Design team](https://gitlab.com/fedora/design/team),
+licensed under [CC-BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
+The design elements include typography, color scheme, and visual
+components adapted from the Fedora design guidelines.

@@ -1,52 +1,66 @@
-import tmt
-from tmt import Logger
+from typing import Any
 
-from tmt_web.generators.json_generator import _create_json_data
+from tmt import Logger, Plan, Test
+from tmt.utils import GeneralError, dict_to_yaml
 
-
-def print_success(logger: Logger) -> None:
-    logger.print("YAML file generated successfully!", color="green")
+from tmt_web.generators.json_generator import CombinedTestPlanModel, ObjectModel
 
 
-def generate_test_yaml(test: tmt.Test, logger: Logger) -> str:
+def _serialize_yaml(data: dict[str, Any], logger: Logger) -> str:
     """
-    This function generates an YAML file with the input data for a test.
+    Helper function to serialize data to YAML with error handling.
 
-    :param test: Test object
-    :param logger: tmt.Logger instance
-    :return: YAML data for a given test
+    :param data: Data to serialize
+    :param logger: Logger instance for logging
+    :return: YAML string
+    :raises: GeneralError if YAML serialization fails
     """
-    yaml_data = tmt.utils.dict_to_yaml(_create_json_data(test, logger))
-    print_success(logger)
-    return yaml_data
+    try:
+        logger.debug("Serializing data to YAML")
+        return dict_to_yaml(data)
+    except Exception as err:
+        logger.fail("Failed to serialize data to YAML")
+        raise GeneralError("Failed to generate YAML output") from err
 
 
-def generate_plan_yaml(plan: tmt.Plan, logger: Logger) -> str:
+def generate_test_yaml(test: Test, logger: Logger) -> str:
     """
-    This function generates an YAML file with the input data for a plan.
+    Generate YAML data for a test.
 
-    :param plan: Plan object
-    :param logger: tmt.Logger instance
-    :return: YAML data for a given plan.
+    :param test: Test object to convert
+    :param logger: Logger instance for logging
+    :return: YAML string with test data
+    :raises: GeneralError if YAML generation fails
     """
-    yaml_data = tmt.utils.dict_to_yaml(_create_json_data(plan, logger))
-    print_success(logger)
-    return yaml_data
+    logger.debug("Generating YAML data for test")
+    data = ObjectModel.from_tmt_object(test).model_dump(by_alias=True)
+    return _serialize_yaml(data, logger)
 
 
-def generate_testplan_yaml(test: tmt.Test, plan: tmt.Plan, logger: Logger) -> str:
+def generate_plan_yaml(plan: Plan, logger: Logger) -> str:
     """
-    This function generates an YAML file with the input data for a test and a plan.
+    Generate YAML data for a plan.
 
-    :param test: Test object
-    :param plan: Plan object
-    :param logger: tmt.Logger instance
-    :return: YAML data for a given test and plan
+    :param plan: Plan object to convert
+    :param logger: Logger instance for logging
+    :return: YAML string with plan data
+    :raises: GeneralError if YAML generation fails
     """
-    data = {
-        "test": _create_json_data(test, logger),
-        "plan": _create_json_data(plan, logger),
-    }
-    yaml_data = tmt.utils.dict_to_yaml(data)
-    print_success(logger)
-    return yaml_data
+    logger.debug("Generating YAML data for plan")
+    data = ObjectModel.from_tmt_object(plan).model_dump(by_alias=True)
+    return _serialize_yaml(data, logger)
+
+
+def generate_testplan_yaml(test: Test, plan: Plan, logger: Logger) -> str:
+    """
+    Generate YAML data for both test and plan.
+
+    :param test: Test object to convert
+    :param plan: Plan object to convert
+    :param logger: Logger instance for logging
+    :return: YAML string with test and plan data
+    :raises: GeneralError if YAML generation fails
+    """
+    logger.debug("Generating YAML data for test and plan")
+    data = CombinedTestPlanModel.from_tmt_objects(test, plan).model_dump(by_alias=True)
+    return _serialize_yaml(data, logger)
