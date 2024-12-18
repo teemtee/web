@@ -29,7 +29,9 @@ logger = Logger(logging.getLogger("tmt-web-api"))
 
 app = FastAPI(
     title="tmt Web API",
-    description="Web API for checking tmt tests, plans and stories",
+    description="Web API for checking tmt tests, plans and stories.\n\n"
+    "Source code: [github.com/teemtee/web](https://github.com/teemtee/web)\n\n"
+    "Report issues at [teemtee/web/issues](https://github.com/teemtee/web/issues)",
     version="1.0.0",
 )
 
