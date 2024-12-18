@@ -168,8 +168,10 @@ def _process_async_request(
     if out_format == "html":
         logger.debug("Generating HTML status callback")
         status_callback_url = f"{settings.API_HOSTNAME}/status/html?task-id={task_result.task_id}"
-        return HTMLResponse(content=html_generator.generate_status_callback(
-            task_result, status_callback_url, logger),
+        return HTMLResponse(
+            content=html_generator.generate_status_callback(
+                task_result, status_callback_url, logger
+            ),
         )
 
     task_out = _to_task_out(task_result, out_format)
@@ -184,11 +186,14 @@ async def general_exception_handler(request: Request, exc: GeneralError):
     # Map specific error messages to appropriate status codes
     if "not found" in str(exc).lower():
         status_code = status.HTTP_404_NOT_FOUND
-    elif any(msg in str(exc).lower() for msg in [
-        "must be provided together",
-        "missing required",
-        "invalid combination",
-    ]):
+    elif any(
+        msg in str(exc).lower()
+        for msg in [
+            "must be provided together",
+            "missing required",
+            "invalid combination",
+        ]
+    ):
         status_code = status.HTTP_400_BAD_REQUEST
     else:
         status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -203,86 +208,86 @@ async def general_exception_handler(request: Request, exc: GeneralError):
 # or for plans: https://tmt.org/?plan-url=https://github.com/teemtee/tmt&plan-name=/plans/features/basic
 @app.get("/", response_model=TaskOut | str)
 def root(
-        request: Request,
-        task_id: Annotated[
-            str | None,
-            Query(
-                alias="task-id",
-                title="Task ID",
-                description="ID of an existing task to retrieve results for",
-            ),
-        ] = None,
-        test_url: Annotated[
-            str | None,
-            Query(
-                alias="test-url",
-                title="Test URL",
-                description="URL of a Git repository containing test metadata",
-            ),
-        ] = None,
-        test_name: Annotated[
-            str | None,
-            Query(
-                alias="test-name",
-                title="Test name",
-                description="Name of the test",
-            ),
-        ] = None,
-        test_ref: Annotated[
-            str | None,
-            Query(
-                alias="test-ref",
-                title="Test ref",
-                description="Reference of the test repository",
-            ),
-        ] = None,
-        test_path: Annotated[
-            str | None,
-            Query(
-                alias="test-path",
-                title="Test path",
-                description="Path to the test metadata directory",
-            ),
-        ] = None,
-        plan_url: Annotated[
-            str | None,
-            Query(
-                alias="plan-url",
-                title="Plan URL",
-                description="URL of a Git repository containing plan metadata",
-            ),
-        ] = None,
-        plan_name: Annotated[
-            str | None,
-            Query(
-                alias="plan-name",
-                title="Plan name",
-                description="Name of the plan",
-            ),
-        ] = None,
-        plan_ref: Annotated[
-            str | None,
-            Query(
-                alias="plan-ref",
-                title="Plan ref",
-                description="Reference of the plan repository",
-            ),
-        ] = None,
-        plan_path: Annotated[
-            str | None,
-            Query(
-                alias="plan-path",
-                title="Plan path",
-                description="Path to the plan metadata directory",
-            ),
-        ] = None,
-        out_format: Annotated[
-            Literal["html", "json", "yaml"],
-            Query(
-                alias="format",
-                description="Output format for the response",
-            ),
-        ] = "json",
+    request: Request,
+    task_id: Annotated[
+        str | None,
+        Query(
+            alias="task-id",
+            title="Task ID",
+            description="ID of an existing task to retrieve results for",
+        ),
+    ] = None,
+    test_url: Annotated[
+        str | None,
+        Query(
+            alias="test-url",
+            title="Test URL",
+            description="URL of a Git repository containing test metadata",
+        ),
+    ] = None,
+    test_name: Annotated[
+        str | None,
+        Query(
+            alias="test-name",
+            title="Test name",
+            description="Name of the test",
+        ),
+    ] = None,
+    test_ref: Annotated[
+        str | None,
+        Query(
+            alias="test-ref",
+            title="Test ref",
+            description="Reference of the test repository",
+        ),
+    ] = None,
+    test_path: Annotated[
+        str | None,
+        Query(
+            alias="test-path",
+            title="Test path",
+            description="Path to the test metadata directory",
+        ),
+    ] = None,
+    plan_url: Annotated[
+        str | None,
+        Query(
+            alias="plan-url",
+            title="Plan URL",
+            description="URL of a Git repository containing plan metadata",
+        ),
+    ] = None,
+    plan_name: Annotated[
+        str | None,
+        Query(
+            alias="plan-name",
+            title="Plan name",
+            description="Name of the plan",
+        ),
+    ] = None,
+    plan_ref: Annotated[
+        str | None,
+        Query(
+            alias="plan-ref",
+            title="Plan ref",
+            description="Reference of the plan repository",
+        ),
+    ] = None,
+    plan_path: Annotated[
+        str | None,
+        Query(
+            alias="plan-path",
+            title="Plan path",
+            description="Path to the plan metadata directory",
+        ),
+    ] = None,
+    out_format: Annotated[
+        Literal["html", "json", "yaml"],
+        Query(
+            alias="format",
+            description="Output format for the response",
+        ),
+    ] = "json",
 ) -> TaskOut | HTMLResponse | JSONResponse | PlainTextResponse | RedirectResponse:
     """Process a request for test, plan, or both.
 
@@ -324,13 +329,16 @@ def root(
 
 
 @app.get("/status")
-def get_task_status(task_id: Annotated[str | None,
-            Query(
-                alias="task-id",
-                title="Task ID",
-                description="ID of the task to check status for",
-            ),
-        ]) -> TaskOut:
+def get_task_status(
+    task_id: Annotated[
+        str | None,
+        Query(
+            alias="task-id",
+            title="Task ID",
+            description="ID of the task to check status for",
+        ),
+    ],
+) -> TaskOut:
     """Get the status of an asynchronous task."""
     logger.debug(f"Getting task status for {task_id}")
     if not task_id:
@@ -355,13 +363,16 @@ def get_task_status(task_id: Annotated[str | None,
 
 
 @app.get("/status/html", response_class=HTMLResponse)
-def get_task_status_html(task_id: Annotated[str | None,
-            Query(
-                alias="task-id",
-                title="Task ID",
-                description="ID of the task to check status for",
-            ),
-        ]) -> HTMLResponse:
+def get_task_status_html(
+    task_id: Annotated[
+        str | None,
+        Query(
+            alias="task-id",
+            title="Task ID",
+            description="ID of the task to check status for",
+        ),
+    ],
+) -> HTMLResponse:
     """Get the status of an asynchronous task in HTML format."""
     logger.debug(f"Getting HTML task status for {task_id}")
     if not task_id:
@@ -379,9 +390,7 @@ def get_task_status_html(task_id: Annotated[str | None,
             status_code=303,  # Use 303 See Other for GET redirects
         )
 
-    status_callback_url = (
-        f"{settings.API_HOSTNAME}/status/html?task-id={r.task_id}"
-    )
+    status_callback_url = f"{settings.API_HOSTNAME}/status/html?task-id={r.task_id}"
     return HTMLResponse(
         content=html_generator.generate_status_callback(r, status_callback_url, logger),
     )

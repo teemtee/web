@@ -275,7 +275,7 @@ class TestCelery:
                 time.sleep(0.1)
             elif json_data["status"] == "SUCCESS":
                 # Get the final result in YAML format
-                response = client.get(f"/?task-id={json_data['id']}&format=yaml")
+                response = client.get(f"/?task-id={json_data["id"]}&format=yaml")
                 assert response.status_code == 200
                 data = response.content.decode("utf-8")
                 assert "500" not in data
@@ -428,9 +428,9 @@ class TestCelery:
                         assert response.status_code == 404
                         assert "not found" in response.json()["detail"].lower()
                         break
-                    pytest.fail(f"Task failed with unexpected error: {status_data['result']}")
+                    pytest.fail(f"Task failed with unexpected error: {status_data["result"]}")
                 elif status_data["status"] != "PENDING":
-                    pytest.fail(f"Task completed with unexpected status: {status_data['status']}")
+                    pytest.fail(f"Task completed with unexpected status: {status_data["status"]}")
                 time.sleep(0.1)
             else:
                 pytest.fail(f"Unexpected status code: {response.status_code}")

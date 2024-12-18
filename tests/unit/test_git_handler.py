@@ -104,7 +104,11 @@ class TestGitHandler:
     def test_get_git_repository_checkout_error(self, mocker, logger):
         """Test get_git_repository with checkout error."""
         # Mock git clone to only try once
-        mocker.patch("tmt.utils.git.git_clone", side_effect=Exception("Failed to checkout"), kwargs={"attempts": 1})
+        mocker.patch(
+            "tmt.utils.git.git_clone",
+            side_effect=Exception("Failed to checkout"),
+            kwargs={"attempts": 1},
+        )
 
         with pytest.raises(AttributeError, match="Failed to checkout ref"):
             git_handler.get_git_repository(self.TEST_REPO, logger, "invalid-branch")

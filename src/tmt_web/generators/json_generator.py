@@ -55,7 +55,7 @@ class ObjectModel(BaseModel):
             url=obj.web_link(),
             ref=obj.fmf_id.ref,
             tier=obj.tier,
-            id=getattr(obj, 'id', None),
+            id=getattr(obj, "id", None),
             **{"fmf-id": FmfIdModel.from_fmf_id(obj.fmf_id)},
         )
 

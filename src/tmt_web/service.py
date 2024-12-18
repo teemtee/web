@@ -46,10 +46,10 @@ def get_tree(url: str, name: str, ref: str | None, tree_path: str | None) -> tmt
         raise GeneralError(f"Failed to clone repository: {exc}") from exc
 
     if tree_path is not None:
-        tree_path += '/'
+        tree_path += "/"
         # If path is set, construct a path to the tmt Tree
-        if path.suffix == '.git':
-            path = path.with_suffix('')
+        if path.suffix == ".git":
+            path = path.with_suffix("")
         path = Path(path.as_posix() + tree_path)
 
     logger.debug(f"Looking for tree in {path}")
@@ -205,8 +205,14 @@ def main(
             logger.fail("Missing required test/plan parameters")
             raise GeneralError("Missing required test/plan parameters")
         data = process_testplan_request(
-            test_url, test_name, test_ref, test_path,
-            plan_url, plan_name, plan_ref, plan_path,
+            test_url,
+            test_name,
+            test_ref,
+            test_path,
+            plan_url,
+            plan_name,
+            plan_ref,
+            plan_path,
         )
     else:
         logger.fail("Invalid combination of test and plan parameters")

@@ -47,8 +47,7 @@ def clear_tmp_dir(logger: Logger) -> None:
             logger.debug("Repository clone directory cleared")
     except Exception as err:
         logger.fail(f"Failed to clear repository clone directory '{path}'")
-        raise GeneralError(
-            f"Failed to clear repository clone directory '{path}'") from err
+        raise GeneralError(f"Failed to clear repository clone directory '{path}'") from err
 
 
 def clone_repository(url: str, logger: Logger, ref: str | None = None) -> Path:

@@ -82,13 +82,13 @@ class TestHtmlGenerator:
         data = html_generator.generate_html_page(test_data, logger)
 
         # Check basic structure
-        assert '<!DOCTYPE html>' in data
+        assert "<!DOCTYPE html>" in data
         assert '<html lang="en">' in data
-        assert f'<title>{test_data.name}</title>' in data
+        assert f"<title>{test_data.name}</title>" in data
 
         # Check content
-        assert f'<h1>{test_data.name}</h1>' in data
-        assert f'<p><strong>Name:</strong> {test_data.name}</p>' in data
+        assert f"<h1>{test_data.name}</h1>" in data
+        assert f"<p><strong>Name:</strong> {test_data.name}</p>" in data
         assert test_data.summary in data
 
     def test_generate_testplan_html(self, test_data, plan_data, logger):
@@ -96,18 +96,18 @@ class TestHtmlGenerator:
         data = html_generator.generate_testplan_html_page(test_data, plan_data, logger)
 
         # Check basic structure
-        assert '<!DOCTYPE html>' in data
+        assert "<!DOCTYPE html>" in data
         assert '<html lang="en">' in data
-        assert 'Test and Plan Information' in data
+        assert "Test and Plan Information" in data
 
         # Check test content
-        assert 'Test Information' in data
-        assert f'<p><strong>Name:</strong> {test_data.name}</p>' in data
+        assert "Test Information" in data
+        assert f"<p><strong>Name:</strong> {test_data.name}</p>" in data
         assert test_data.summary in data
 
         # Check plan content
-        assert 'Plan Information' in data
-        assert f'<p><strong>Name:</strong> {plan_data.name}</p>' in data
+        assert "Plan Information" in data
+        assert f"<p><strong>Name:</strong> {plan_data.name}</p>" in data
         assert plan_data.summary in data
 
     def test_generate_status_callback_pending(self, logger):
@@ -117,12 +117,12 @@ class TestHtmlGenerator:
 
         data = html_generator.generate_status_callback(result, callback_url, logger)
 
-        assert '<!DOCTYPE html>' in data
-        assert '<h1>Processing...</h1>' in data
+        assert "<!DOCTYPE html>" in data
+        assert "<h1>Processing...</h1>" in data
         assert callback_url in data
-        assert 'Please wait...' in data
-        assert 'setTimeout' in data  # Check for auto-refresh script
-        assert 'window.location.href' in data  # Check for proper redirect
+        assert "Please wait..." in data
+        assert "setTimeout" in data  # Check for auto-refresh script
+        assert "window.location.href" in data  # Check for proper redirect
 
     def test_generate_status_callback_retrying(self, logger):
         """Test status callback page for retrying task."""
@@ -131,11 +131,11 @@ class TestHtmlGenerator:
 
         data = html_generator.generate_status_callback(result, callback_url, logger)
 
-        assert '<!DOCTYPE html>' in data
-        assert '<h1>Retrying...</h1>' in data
+        assert "<!DOCTYPE html>" in data
+        assert "<h1>Retrying...</h1>" in data
         assert callback_url in data
-        assert 'Task is being retried' in data
-        assert 'window.location.href' in data  # Check for proper redirect
+        assert "Task is being retried" in data
+        assert "window.location.href" in data  # Check for proper redirect
 
     def test_generate_status_callback_success(self, logger):
         """Test status callback page for successful task."""
@@ -145,9 +145,9 @@ class TestHtmlGenerator:
 
         data = html_generator.generate_status_callback(result, callback_url, logger)
 
-        assert '<!DOCTYPE html>' in data
+        assert "<!DOCTYPE html>" in data
         assert html_result in data  # HTML should be included directly
-        assert 'Status:' not in data  # Success case shows only the result
+        assert "Status:" not in data  # Success case shows only the result
 
     def test_generate_status_callback_failure(self, logger):
         """Test status callback page for failed task."""
@@ -157,11 +157,11 @@ class TestHtmlGenerator:
 
         data = html_generator.generate_status_callback(result, callback_url, logger)
 
-        assert '<!DOCTYPE html>' in data
-        assert '<h1>Task Failed</h1>' in data
-        assert 'Status: FAILURE' in data
-        assert f'Error: {error_msg}' in data
-        assert 'Refresh Status' in data
+        assert "<!DOCTYPE html>" in data
+        assert "<h1>Task Failed</h1>" in data
+        assert "Status: FAILURE" in data
+        assert f"Error: {error_msg}" in data
+        assert "Refresh Status" in data
 
     def test_generate_status_callback_unknown(self, logger):
         """Test status callback page for unknown status."""
@@ -170,18 +170,19 @@ class TestHtmlGenerator:
 
         data = html_generator.generate_status_callback(result, callback_url, logger)
 
-        assert '<!DOCTYPE html>' in data
-        assert '<h1>Task Status</h1>' in data
-        assert 'Status: UNKNOWN' in data
-        assert 'Result: Some result' in data
-        assert 'Refresh Status' in data
+        assert "<!DOCTYPE html>" in data
+        assert "<h1>Task Status</h1>" in data
+        assert "Status: UNKNOWN" in data
+        assert "Result: Some result" in data
+        assert "Refresh Status" in data
 
     def test_missing_template(self, logger, monkeypatch):
         """Test handling of missing template."""
+
         def mock_get_template(*args):
             raise TemplateNotFound("missing.html.j2")
 
-        monkeypatch.setattr(html_generator.env, 'get_template', mock_get_template)
+        monkeypatch.setattr(html_generator.env, "get_template", mock_get_template)
 
         with pytest.raises(GeneralError) as exc:
             html_generator._render_template("missing.html.j2", logger)
@@ -190,12 +191,13 @@ class TestHtmlGenerator:
 
     def test_template_render_error(self, logger, monkeypatch):
         """Test handling of template rendering errors."""
+
         def mock_render(*args, **kwargs):
             raise Exception("Render failed")
 
         template = html_generator.env.get_template("testorplan.html.j2")
-        monkeypatch.setattr(template, 'render', mock_render)
-        monkeypatch.setattr(html_generator.env, 'get_template', lambda *args: template)
+        monkeypatch.setattr(template, "render", mock_render)
+        monkeypatch.setattr(html_generator.env, "get_template", lambda *args: template)
 
         with pytest.raises(GeneralError) as exc:
             html_generator._render_template("testorplan.html.j2", logger)

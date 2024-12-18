@@ -77,10 +77,11 @@ class TestYamlGenerator:
 
     def test_yaml_serialization_error(self, test_obj, logger, monkeypatch):
         """Test error handling when YAML serialization fails."""
+
         def mock_dict_to_yaml(*args, **kwargs):
             raise ValueError("YAML serialization failed")
 
-        monkeypatch.setattr(yaml_generator, 'dict_to_yaml', mock_dict_to_yaml)
+        monkeypatch.setattr(yaml_generator, "dict_to_yaml", mock_dict_to_yaml)
 
         with pytest.raises(GeneralError) as exc:
             yaml_generator.generate_test_yaml(test_obj, logger)

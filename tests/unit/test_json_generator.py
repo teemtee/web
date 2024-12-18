@@ -70,10 +70,11 @@ class TestJsonGenerator:
 
     def test_json_serialization_error(self, test_obj, logger, monkeypatch):
         """Test error handling when JSON serialization fails."""
+
         def mock_model_dump_json(*args, **kwargs):
             raise ValueError("JSON serialization failed")
 
-        monkeypatch.setattr(ObjectModel, 'model_dump_json', mock_model_dump_json)
+        monkeypatch.setattr(ObjectModel, "model_dump_json", mock_model_dump_json)
 
         with pytest.raises(GeneralError) as exc:
             json_generator.generate_test_json(test_obj, logger)
@@ -95,7 +96,7 @@ class TestJsonGenerator:
     def test_fmf_id_model_none_path(self, test_obj, monkeypatch):
         """Test FmfIdModel conversion with None path."""
         # Mock the path to be None
-        monkeypatch.setattr(test_obj.fmf_id, 'path', None)
+        monkeypatch.setattr(test_obj.fmf_id, "path", None)
 
         fmf_id_data = FmfIdModel.from_fmf_id(test_obj.fmf_id)
         assert fmf_id_data.path is None

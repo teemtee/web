@@ -34,3 +34,4 @@ repos:
         args:
           - '--fix'
           - '--show-fixes'
+      - id: ruff-format

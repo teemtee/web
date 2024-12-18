@@ -122,14 +122,17 @@ lint.ignore = [
     "G004",    # Logging statement uses f-string
     "D1",      # Missing docstring
     "D401",    # First line should be in imperative mood
+
+    # ruff format conflicts
+    "COM812",
+    "ISC001",
 ]
 
 [tool.ruff.lint.per-file-ignores]
 # Less strict security checks in tests
 "tests/*" = [
     "S101",  # Assert usage
-    "PLR0915",  # Too many statements
-    "PLR2004",  # Magic value
+    "PLR",  # Pylint refactor
     "E501",  # Line length
     ]
 

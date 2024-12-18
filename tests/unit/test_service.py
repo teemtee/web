@@ -68,7 +68,9 @@ def mock_plan():
 
 def test_get_tree_git_error(mocker, logger):
     """Test get_tree with git error."""
-    mocker.patch("tmt_web.utils.git_handler.get_git_repository", side_effect=GitUrlError("Invalid URL"))
+    mocker.patch(
+        "tmt_web.utils.git_handler.get_git_repository", side_effect=GitUrlError("Invalid URL")
+    )
 
     with pytest.raises(GitUrlError, match="Invalid repository URL"):
         get_tree("invalid-url", "test", None, None)
@@ -85,15 +87,15 @@ def test_get_tree_general_error(mocker):
 def test_get_tree_with_git_suffix(mocker):
     """Test get_tree with .git suffix path."""
     mock_path = mocker.Mock()
-    mock_path.suffix = '.git'
+    mock_path.suffix = ".git"
     mock_path.with_suffix.return_value = mock_path
-    mock_path.as_posix.return_value = '/path/to/repo'
+    mock_path.as_posix.return_value = "/path/to/repo"
     mocker.patch("tmt_web.utils.git_handler.get_git_repository", return_value=mock_path)
     mocker.patch("tmt.base.Tree")
     mocker.patch("tmt.plugins.explore")
 
     get_tree("url", "test", None, "/some/path")
-    mock_path.with_suffix.assert_called_once_with('')
+    mock_path.with_suffix.assert_called_once_with("")
 
 
 def test_format_data_unsupported_format(mocker, logger):
@@ -121,7 +123,9 @@ def test_format_data_yaml_plan(mocker, logger):
 def test_format_data_html_test(mocker, logger):
     """Test format_data with html format and Test data."""
     test_data = TestData(name="test", summary="Test summary")
-    mocker.patch("tmt_web.generators.html_generator.generate_html_page", return_value="<html>test</html>")
+    mocker.patch(
+        "tmt_web.generators.html_generator.generate_html_page", return_value="<html>test</html>"
+    )
     result = format_data(test_data, "html", logger)
     assert result == "<html>test</html>"
 
@@ -131,7 +135,10 @@ def test_format_data_html_testplan(mocker, logger):
     test_data = TestData(name="test", summary="Test summary")
     plan_data = PlanData(name="plan", summary="Plan summary")
     testplan_data = TestPlanData(test=test_data, plan=plan_data)
-    mocker.patch("tmt_web.generators.html_generator.generate_testplan_html_page", return_value="<html>testplan</html>")
+    mocker.patch(
+        "tmt_web.generators.html_generator.generate_testplan_html_page",
+        return_value="<html>testplan</html>",
+    )
     result = format_data(testplan_data, "html", logger)
     assert result == "<html>testplan</html>"
 
@@ -195,8 +202,14 @@ def test_process_testplan_request_test_not_found(mocker):
 
     with pytest.raises(GeneralError, match="Test 'test' not found"):
         process_testplan_request(
-            "url", "test", None, None,
-            "url", "plan", None, None,
+            "url",
+            "test",
+            None,
+            None,
+            "url",
+            "plan",
+            None,
+            None,
         )
 
 
@@ -210,8 +223,14 @@ def test_process_testplan_request_plan_not_found(mocker, mock_test):
 
     with pytest.raises(GeneralError, match="Plan 'plan' not found"):
         process_testplan_request(
-            "url", "test", None, None,
-            "url", "plan", None, None,
+            "url",
+            "test",
+            None,
+            None,
+            "url",
+            "plan",
+            None,
+            None,
         )
 
 
@@ -222,8 +241,14 @@ def test_process_testplan_request_returns_testplan_data(mocker, mock_test, mock_
     tree_mock.plans.return_value = [mock_plan]
 
     result = process_testplan_request(
-        "url", "test", None, None,
-        "url", "plan", None, None,
+        "url",
+        "test",
+        None,
+        None,
+        "url",
+        "plan",
+        None,
+        None,
     )
     assert isinstance(result, TestPlanData)
     assert result.test.name == "test"
@@ -298,8 +323,14 @@ def test_process_testplan_request_with_all_attributes(mocker):
 
     # Process the request
     result = process_testplan_request(
-        "url", "complete-test", None, None,
-        "url", "complete-plan", None, None,
+        "url",
+        "complete-test",
+        None,
+        None,
+        "url",
+        "complete-plan",
+        None,
+        None,
     )
 
     # Verify all attributes are present and correct
