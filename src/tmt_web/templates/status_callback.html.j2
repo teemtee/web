@@ -1,0 +1,51 @@
+{% extends '_base.html.j2' %}
+
+{% block title %}Task Status{% endblock %}
+
+{% block head %}
+  {% if status in ["PENDING", "RETRYING"] %}
+  <script>
+    window.onload = function() {
+      setTimeout(function() {
+        window.location.href = "{{ status_callback_url }}";
+      }, 2000);
+    };
+  </script>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+  {% if status == "PENDING" %}
+    <div class="status status-pending">
+      <h1>Processing...</h1>
+      <p>Status: {{ status }}</p>
+      <p>Your request is being processed. Please wait...</p>
+      <p><a href="{{ status_callback_url }}" class="button">View Task Status</a></p>
+    </div>
+  {%- elif status == "RETRYING" %}
+    <div class="status status-pending">
+      <h1>Retrying...</h1>
+      <p>Status: {{ status }}</p>
+      <p>Task is being retried. Please wait...</p>
+      <p><a href="{{ status_callback_url }}" class="button">View Task Status</a></p>
+    </div>
+  {%- elif status == "FAILURE" %}
+    <div class="status status-error">
+      <h1>Task Failed</h1>
+      <p>Status: {{ status }}</p>
+      <p>Error: {{ result }}</p>
+      <p><a href="{{ status_callback_url }}" class="button">Refresh Status</a></p>
+    </div>
+  {%- elif status == "SUCCESS" %}
+    {{ result | safe }}
+  {%- else %}
+    <div class="status">
+      <h1>Task Status</h1>
+      <p>Status: {{ status }}</p>
+      {% if result %}
+      <p>Result: {{ result }}</p>
+      {% endif %}
+      <p><a href="{{ status_callback_url }}" class="button">Refresh Status</a></p>
+    </div>
+  {%- endif %}
+{%- endblock %}

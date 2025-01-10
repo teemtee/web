@@ -1,73 +1,141 @@
-import json
 from typing import Any
 
-import tmt.utils
-from tmt import Plan, Test
+from pydantic import BaseModel, ConfigDict, Field
+from tmt import Logger, Plan, Test
+from tmt.utils import GeneralError
 
 
-def _create_json_data(obj: Test | Plan, logger: tmt.Logger) -> dict[str, Any]:
+class FmfIdModel(BaseModel):
+    """Represents fmf-id data in JSON output."""
+
+    name: str
+    url: str | None = None
+    path: str | None = None
+    ref: str | None = None
+
+    @classmethod
+    def from_fmf_id(cls, fmf_id: Any) -> "FmfIdModel":
+        """Create FmfIdModel from a tmt FmfId object."""
+        return cls(
+            name=fmf_id.name,
+            url=fmf_id.url,
+            path=fmf_id.path.as_posix() if fmf_id.path is not None else None,
+            ref=fmf_id.ref,
+        )
+
+
+class ObjectModel(BaseModel):
+    """Common structure for both Test and Plan objects in JSON output."""
+
+    name: str
+    contact: list[str]
+    tag: list[str]
+    summary: str | None = None
+    description: str | None = None
+    url: str | None = None
+    ref: str | None = None
+    tier: str | None = None
+    id: str | None = None
+    fmf_id: FmfIdModel = Field(alias="fmf-id")
+
+    model_config = ConfigDict(
+        populate_by_name=True,  # Allow both fmf_id and fmf-id
+        alias_generator=None,  # Allow both fmf_id and fmf-id
+    )
+
+    @classmethod
+    def from_tmt_object(cls, obj: Test | Plan) -> "ObjectModel":
+        """Create ObjectModel from a tmt Test or Plan object."""
+        return cls(
+            name=obj.name,
+            contact=obj.contact,
+            tag=obj.tag,
+            summary=obj.summary,
+            description=obj.description,
+            url=obj.web_link(),
+            ref=obj.fmf_id.ref,
+            tier=obj.tier,
+            id=getattr(obj, "id", None),
+            **{"fmf-id": FmfIdModel.from_fmf_id(obj.fmf_id)},
+        )
+
+
+class CombinedTestPlanModel(BaseModel):
+    """Combined Test and Plan data for JSON output."""
+
+    test: ObjectModel
+    plan: ObjectModel
+
+    @classmethod
+    def from_tmt_objects(cls, test: Test, plan: Plan) -> "CombinedTestPlanModel":
+        """Create CombinedTestPlanModel from tmt Test and Plan objects."""
+        return cls(
+            test=ObjectModel.from_tmt_object(test),
+            plan=ObjectModel.from_tmt_object(plan),
+        )
+
+
+def _serialize_json(data: BaseModel, logger: Logger) -> str:
     """
-    Helper function to create the JSON data from a test or plan object.
+    Helper function to serialize data to JSON with error handling.
+
+    :param data: Data to serialize
+    :param logger: Logger instance for logging
+    :return: JSON string
+    :raises: GeneralError if JSON serialization fails
     """
-    full_url = obj.web_link()
-    return {
-        "name": obj.name,
-        "summary": obj.summary,
-        "description": obj.description,
-        "url": full_url,
-        "ref": obj.fmf_id.ref,
-        "contact": obj.contact,
-        "tag": obj.tag,
-        "tier": obj.tier,
-        "id": obj.id,
-        "fmf-id": {
-            "url": obj.fmf_id.url,
-            "path": obj.fmf_id.path.as_posix() if obj.fmf_id.path is not None else None,
-            "name": obj.fmf_id.name,
-            "ref": obj.fmf_id.ref,
-        }
-    }
+    try:
+        logger.debug("Serializing data to JSON")
+        return data.model_dump_json(by_alias=True)  # fmf_id vs fmf-id
+    except Exception as err:
+        logger.fail("Failed to serialize data to JSON")
+        raise GeneralError("Failed to generate JSON output") from err
 
 
-def generate_test_json(test: tmt.Test, logger: tmt.Logger) -> str:
+def generate_test_json(test: Test, logger: Logger) -> str:
     """
-    This function generates an JSON file with the input data for a test.
+    Generate JSON data for a test.
 
-    :param test: Test object
-    :param logger: tmt.Logger instance
-    :return: JSON data for a given test
+    :param test: Test object to convert
+    :param logger: Logger instance for logging
+    :return: JSON string with test data
+    :raises: GeneralError if JSON generation fails
     """
-    data = _create_json_data(test, logger)
-    logger.print("Generating the JSON file...")
-    return json.dumps(data)
+    logger.debug("Generating JSON data for test")
+    data = ObjectModel.from_tmt_object(test)
+    result = _serialize_json(data, logger)
+    logger.debug("JSON data generated")
+    return result
 
 
-def generate_plan_json(plan: tmt.Plan, logger: tmt.Logger) -> str:
+def generate_plan_json(plan: Plan, logger: Logger) -> str:
     """
-    This function generates an JSON file with the input data for a plan.
+    Generate JSON data for a plan.
 
-    :param plan: Plan object
-    :param logger: tmt.Logger instance
-    :return: JSON data for a given plan
+    :param plan: Plan object to convert
+    :param logger: Logger instance for logging
+    :return: JSON string with plan data
+    :raises: GeneralError if JSON generation fails
     """
-    data = _create_json_data(plan, logger)
-    logger.print("Generating the JSON file...")
-    return json.dumps(data)
+    logger.debug("Generating JSON data for plan")
+    data = ObjectModel.from_tmt_object(plan)
+    result = _serialize_json(data, logger)
+    logger.debug("JSON data generated")
+    return result
 
 
-def generate_testplan_json(test: tmt.Test, plan: tmt.Plan, logger: tmt.Logger) -> str:
+def generate_testplan_json(test: Test, plan: Plan, logger: Logger) -> str:
     """
-    This function generates an JSON file with the input data for a test and a plan.
+    Generate JSON data for both test and plan.
 
-    :param test: Test object
-    :param plan: Plan object
-    :param logger: tmt.Logger instance
-    :return: JSON data for a given test and plan
+    :param test: Test object to convert
+    :param plan: Plan object to convert
+    :param logger: Logger instance for logging
+    :return: JSON string with test and plan data
+    :raises: GeneralError if JSON generation fails
     """
-    logger.print("Generating the JSON file...")
-    data = {
-        "test": _create_json_data(test, logger),
-        "plan": _create_json_data(plan, logger),
-    }
-    logger.print("Generating the JSON file...")
-    return json.dumps(data)
+    logger.debug("Generating JSON data for test and plan")
+    data = CombinedTestPlanModel.from_tmt_objects(test, plan)
+    result = _serialize_json(data, logger)
+    logger.debug("JSON data generated")
+    return result

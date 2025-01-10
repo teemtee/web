@@ -1,129 +1,108 @@
-import contextlib
-import hashlib
+"""
+Git repository handling utilities.
+
+This module provides functions for cloning and managing Git repositories,
+with support for refs (branch/tag) checkout and repository reuse.
+It uses tmt's Git utilities for robust clone operations with retry logic.
+"""
+
 from shutil import rmtree
 
 from tmt import Logger
-from tmt.utils import (  # type: ignore[attr-defined]
-    Command,
-    Common,
-    GeneralError,
-    Path,
-    RunError,
-    git,
-)
+from tmt._compat.pathlib import Path
+from tmt.utils import Command, Common, GeneralError, RunError
+from tmt.utils.git import check_git_url, git_clone
 
 from tmt_web import settings
 
+# Root directory is two levels up from this file
+ROOT_DIR = Path(__file__).resolve().parents[2]
 
-def checkout_branch(path: Path, logger: Logger, ref: str) -> None:
+
+def get_unique_clone_path(url: str) -> Path:
     """
-    Checks out the given branch in the repository.
+    Generate a unique path for cloning a repository.
 
-    :param ref: Name of the ref to check out
-    :param path: Path to the repository
-    :param logger: Instance of Logger
-    """
-    try:
-        common_instance = Common(logger=logger)
-        common_instance.run(command=Command("git", "checkout", ref), cwd=path)
-    except RunError as err:
-        logger.print("Failed to do checkout in the repository!", color="red")
-        raise AttributeError from err
-
-
-def clone_repository(url: str, logger: Logger, ref: str | None = None) -> None:
-    """
-    Clones the repository from the given URL and optionally checks out a specific ref.
-
-    Raises FileExistsError if the repository is already cloned or Exception if the cloning fails.
-
-    :param url: URL to the repository
-    :param logger: Instance of Logger
-    :param ref: Optional name of the ref to check out
-    """
-    logger.print("Cloning the repository...")
-    path = get_path_to_repository(url)
-
-    if check_if_repository_exists(url):
-        if ref:
-            try:
-                checkout_branch(ref=ref, path=path, logger=logger)
-                logger.print(f"Checked out ref: {ref}", color="green")
-            except AttributeError as err:
-                logger.print(f"Failed to checkout ref: {ref}", color="red")
-                raise AttributeError from err
-        logger.print("Repository already cloned!", color="yellow")
-        raise FileExistsError
-
-    try:
-        git.git_clone(url=url, destination=path, logger=logger)
-
-        if ref:
-            try:
-                checkout_branch(ref=ref, path=path, logger=logger)
-                logger.print(f"Checked out ref: {ref}", color="green")
-            except AttributeError as err:
-                logger.print(f"Failed to checkout ref: {ref}", color="red")
-                raise AttributeError from err
-    except GeneralError as e:
-        logger.print("Failed to clone the repository!", color="red")
-        raise Exception from e
-    logger.print("Repository cloned successfully!", color="green")
-
-
-def get_path_to_repository(url: str) -> Path:
-    """
-    Returns the path to the cloned repository from the given URL.
-
-    The repository url is hashed to avoid repository name collisions.
-
-    :param url: URL to the repository
-    :return: Path to the cloned repository
+    :param url: Repository URL
+    :return: Unique path for cloning
     """
     url = url.rstrip("/")
-    clone_dir_name = hashlib.sha256(url.encode()).hexdigest()
-    repo_name = url.rsplit("/", 1)[-1]
-    root_dir = Path(__file__).resolve().parents[2]  # going up from tmt_web/utils/git_handler.py
-    return root_dir / settings.CLONE_DIR_PATH / repo_name / clone_dir_name
-
-
-def check_if_repository_exists(url: str) -> bool:
-    """
-    Checks if the repository from the given URL is already cloned.
-
-    :param url: URL to the repository
-    :return: True if the repository is already cloned, False otherwise
-    """
-    return get_path_to_repository(url).exists()
+    clone_dir_name = str(abs(hash(url)))
+    return ROOT_DIR / settings.CLONE_DIR_PATH / clone_dir_name
 
 
 def clear_tmp_dir(logger: Logger) -> None:
     """
-    Clears the .tmp directory.
+    Clear the temporary directory where repositories are cloned.
 
-    :param logger: Instance of Logger
+    :param logger: Logger instance
+    :raises: GeneralError if cleanup fails
     """
-    logger.print("Clearing the .tmp directory...")
-    root_dir = Path(__file__).resolve().parents[2]  # going up from tmt_web/utils/git_handler.py
-    path = root_dir / settings.CLONE_DIR_PATH
+    logger.debug("Clearing repository clone directory")
+    path = (ROOT_DIR / settings.CLONE_DIR_PATH).resolve()
+
     try:
-        rmtree(path)
-    except Exception as e:
-        logger.print("Failed to clear the repository clone directory!", color="red")
-        raise e
+        if path.exists():
+            rmtree(path, ignore_errors=True)
+            logger.debug("Repository clone directory cleared")
+    except Exception as err:
+        logger.fail(f"Failed to clear repository clone directory '{path}'")
+        raise GeneralError(f"Failed to clear repository clone directory '{path}'") from err
 
-    logger.print("Repository clone directory cleared successfully!", color="green")
 
-
-def get_git_repository(url: str, logger: Logger, ref: str | None) -> Path:
+def clone_repository(url: str, logger: Logger, ref: str | None = None) -> Path:
     """
-    Clones the repository from the given URL and returns the path to the cloned repository.
+    Clone a Git repository to a unique path.
 
-    :param url: URL to the repository
-    :param logger: Instance of Logger
+    :param url: Repository URL
+    :param logger: Logger instance
+    :param ref: Optional ref to checkout
     :return: Path to the cloned repository
+    :raises: GitUrlError if URL is invalid
+    :raises: GeneralError if clone fails
+    :raises: AttributeError if ref doesn't exist
     """
-    with contextlib.suppress(FileExistsError):
-        clone_repository(url, logger, ref)
+    # Validate URL
+    url = check_git_url(url, logger)
 
-    return get_path_to_repository(url)
+    # Get unique path
+    destination = get_unique_clone_path(url)
+
+    # Clone with retry logic
+    git_clone(url=url, destination=destination, logger=logger)
+
+    # If ref provided, checkout after clone
+    if ref:
+        common = Common(logger=logger)
+        try:
+            common.run(Command("git", "checkout", ref), cwd=destination)
+        except RunError as err:
+            logger.fail(f"Failed to checkout ref '{ref}'")
+            raise AttributeError(f"Failed to checkout ref '{ref}': {err}") from err
+
+    return destination
+
+
+def get_git_repository(url: str, logger: Logger, ref: str | None = None) -> Path:
+    """
+    Get a Git repository by cloning or reusing an existing clone.
+
+    :param url: Repository URL
+    :param logger: Logger instance
+    :param ref: Optional ref to checkout
+    :return: Path to the cloned repository
+    :raises: GitUrlError if URL is invalid
+    :raises: GeneralError if clone fails
+    :raises: AttributeError if ref doesn't exist
+    """
+    destination = get_unique_clone_path(url)
+    if not destination.exists():
+        clone_repository(url, logger, ref)
+    elif ref:
+        common = Common(logger=logger)
+        try:
+            common.run(Command("git", "checkout", ref), cwd=destination)
+        except RunError as err:
+            logger.fail(f"Failed to checkout ref '{ref}'")
+            raise AttributeError(f"Failed to checkout ref '{ref}': {err}") from err
+    return destination

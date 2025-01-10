@@ -1,0 +1,61 @@
+{% extends '_base.html.j2' %}
+
+{% block title %}{{ testorplan.name }}{% endblock %}
+
+{% block content %}
+<section>
+  <h1>{{ testorplan.name }}</h1>
+
+  <div class="metadata">
+    <p><strong>Name:</strong> {{ testorplan.name }}</p>
+    {% if testorplan.summary %}
+    <p><strong>Summary:</strong> {{ testorplan.summary }}</p>
+    {% endif %}
+    {% if testorplan.description %}
+    <p><strong>Description:</strong> {{ testorplan.description }}</p>
+    {% endif %}
+    {% if testorplan.tier %}
+    <p><strong>Tier:</strong> {{ testorplan.tier }}</p>
+    {% endif %}
+    {% if testorplan.ref %}
+    <p><strong>Reference:</strong> {{ testorplan.ref }}</p>
+    {% endif %}
+    {% if testorplan.path %}
+    <p><strong>Path:</strong> {{ testorplan.path }}</p>
+    {% endif %}
+    {% if testorplan.id %}
+    <p><strong>ID:</strong> {{ testorplan.id }}</p>
+    {% endif %}
+    {% if testorplan.fmf_id %}
+      {% if testorplan.fmf_id.url %}
+      <p><strong>URL:</strong> <a href="{{ testorplan.fmf_id.url }}">{{ testorplan.fmf_id.url }}</a></p>
+      {% endif %}
+      {% if testorplan.fmf_id.ref %}
+      <p><strong>Reference:</strong> {{ testorplan.fmf_id.ref }}</p>
+      {% endif %}
+      {% if testorplan.fmf_id.name %}
+      <p><strong>Name:</strong> {{ testorplan.fmf_id.name }}</p>
+      {% endif %}
+      {% if testorplan.fmf_id.path %}
+      <p><strong>Path:</strong> {{ testorplan.fmf_id.path }}</p>
+      {% endif %}
+    {% endif %}
+    {% if testorplan.contact %}
+    <p><strong>Contacts:</strong></p>
+    <ul class="contact-list">
+    {% for contact in testorplan.contact %}
+      <li>{{ contact }}</li>
+    {% endfor %}
+    </ul>
+    {% endif %}
+    {% if testorplan.tag %}
+    <p><strong>Tags:</strong></p>
+    <div class="tag-list">
+    {% for tag in testorplan.tag %}
+      <span class="tag">{{ tag }}</span>
+    {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</section>
+{%- endblock %}
