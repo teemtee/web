@@ -289,7 +289,7 @@ def root(
             alias="format",
             description="Output format for the response",
         ),
-    ] = "json",
+    ] = "html",
 ) -> TaskOut | HTMLResponse | JSONResponse | PlainTextResponse | RedirectResponse:
     """Process a request for test, plan, or both.
 
@@ -388,7 +388,7 @@ def get_task_status_html(
     if r.successful() and r.result:
         # For successful tasks, redirect to root endpoint
         return RedirectResponse(
-            url=f"{settings.API_HOSTNAME}/?task-id={r.task_id}&format=html",
+            url=f"{settings.API_HOSTNAME}/?task-id={r.task_id}",
             status_code=303,  # Use 303 See Other for GET redirects
         )
 
