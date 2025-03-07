@@ -60,3 +60,19 @@ def test_convert_field_value_other_field():
     value = "test value"
     result = _convert_field_value("summary", value)
     assert result == value
+
+
+def test_convert_fmf_id_none():
+    """Test converting fmf_id when it doesn't exist."""
+    from unittest.mock import MagicMock
+
+    from tmt_web.converters import _convert_fmf_id
+
+    # Create a mock object without fmf_id attribute
+    mock_obj = MagicMock()
+    # Ensure fmf_id doesn't exist
+    if hasattr(mock_obj, "fmf_id"):
+        delattr(mock_obj, "fmf_id")
+
+    result = _convert_fmf_id(mock_obj)
+    assert result is None
