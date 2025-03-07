@@ -401,3 +401,78 @@ def test_main_invalid_parameters():
     # Invalid combination (neither test nor plan)
     with pytest.raises(GeneralError, match="Invalid combination of test and plan parameters"):
         main(None, None, None, None, None, None, None, None, "json")
+
+
+def test_main_with_celery_disabled(mocker):
+    """Test main when Celery is disabled."""
+    import os
+
+    # Set environment variable to disable Celery
+    os.environ["USE_CELERY"] = "false"
+
+    # Create a mock test
+    test_data = TestData(name="test", summary="Test summary")
+
+    # Mock process_test_request to return our test data
+    mocker.patch("tmt_web.service.process_test_request", return_value=test_data)
+
+    # Mock format_data to verify it's called directly
+    mock_format = mocker.patch("tmt_web.service.format_data", return_value="formatted_data")
+
+    # Mock serialize_data to ensure it's NOT called
+    mock_serialize = mocker.patch("tmt_web.service.serialize_data")
+
+    # Call main with test parameters
+    result = main("url", "test", None, None, None, None, None, None, "json")
+
+    # Verify format_data was called directly
+    mock_format.assert_called_once_with(test_data, "json", mocker.ANY)
+
+    # Verify serialize_data was NOT called
+    mock_serialize.assert_not_called()
+
+    # Verify result is from format_data
+    assert result == "formatted_data"
+
+    # Reset environment
+    os.environ.pop("USE_CELERY", None)
+
+
+def test_main_with_celery_enabled(mocker):
+    """Test main when Celery is enabled (coverage for line 226)."""
+    import os
+
+    # Ensure environment variable is set to enable Celery (or not set at all)
+    if "USE_CELERY" in os.environ:
+        old_value = os.environ["USE_CELERY"]
+        os.environ.pop("USE_CELERY")
+    else:
+        old_value = None
+
+    # Create a mock test
+    test_data = TestData(name="test", summary="Test summary")
+
+    # Mock process_test_request to return our test data
+    mocker.patch("tmt_web.service.process_test_request", return_value=test_data)
+
+    # Mock format_data to verify it's NOT called directly
+    mock_format = mocker.patch("tmt_web.service.format_data")
+
+    # Mock serialize_data to ensure it IS called and returns serialized data
+    mock_serialize = mocker.patch("tmt_web.service.serialize_data", return_value="serialized_data")
+
+    # Call main with test parameters
+    result = main("url", "test", None, None, None, None, None, None, "json")
+
+    # Verify format_data was NOT called
+    mock_format.assert_not_called()
+
+    # Verify serialize_data WAS called with the test data
+    mock_serialize.assert_called_once_with(test_data)
+
+    # Verify result is from serialize_data
+    assert result == "serialized_data"
+
+    # Restore environment if needed
+    if old_value is not None:
+        os.environ["USE_CELERY"] = old_value
