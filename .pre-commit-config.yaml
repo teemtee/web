@@ -17,7 +17,7 @@ repos:
 
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: "v1.13.0"  # Also update in pyproject.toml
+    rev: "v1.15.0"  # Also update in pyproject.toml
     hooks:
       - id: mypy
         language_version: "3.12"
@@ -28,7 +28,7 @@ repos:
         pass_filenames: false
 
   - repo: https://github.com/charliermarsh/ruff-pre-commit
-    rev: v0.8.3
+    rev: v0.9.10
     hooks:
       - id: ruff
         args:
