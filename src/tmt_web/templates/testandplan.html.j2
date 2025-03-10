@@ -5,10 +5,9 @@
 {% block content %}
 {# Test Section #}
 <section>
-  <h1>Test Information</h1>
+  <h1>{{ test.name }}</h1>
 
   <div class="metadata">
-    <p><strong>Name:</strong> {{ test.name }}</p>
     {% if test.summary %}
     <p><strong>Summary:</strong> {{ test.summary }}</p>
     {% endif %}
@@ -34,9 +33,7 @@
       {% if test.fmf_id.ref %}
       <p><strong>Reference:</strong> {{ test.fmf_id.ref }}</p>
       {% endif %}
-      {% if test.fmf_id.name %}
-      <p><strong>Name:</strong> {{ test.fmf_id.name }}</p>
-      {% endif %}
+      {# fmf_id.name is redundant since it's already in the heading #}
       {% if test.fmf_id.path %}
       <p><strong>Path:</strong> {{ test.fmf_id.path }}</p>
       {% endif %}
@@ -62,10 +59,9 @@
 
 {# Plan Section #}
 <section>
-  <h1>Plan Information</h1>
+  <h1>{{ plan.name }}</h1>
 
   <div class="metadata">
-    <p><strong>Name:</strong> {{ plan.name }}</p>
     {% if plan.summary %}
     <p><strong>Summary:</strong> {{ plan.summary }}</p>
     {% endif %}
@@ -91,9 +87,7 @@
       {% if plan.fmf_id.ref %}
       <p><strong>Reference:</strong> {{ plan.fmf_id.ref }}</p>
       {% endif %}
-      {% if plan.fmf_id.name %}
-      <p><strong>Name:</strong> {{ plan.fmf_id.name }}</p>
-      {% endif %}
+      {# fmf_id.name is redundant since it's already in the heading #}
       {% if plan.fmf_id.path %}
       <p><strong>Path:</strong> {{ plan.fmf_id.path }}</p>
       {% endif %}

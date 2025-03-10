@@ -7,7 +7,6 @@
   <h1>{{ testorplan.name }}</h1>
 
   <div class="metadata">
-    <p><strong>Name:</strong> {{ testorplan.name }}</p>
     {% if testorplan.summary %}
     <p><strong>Summary:</strong> {{ testorplan.summary }}</p>
     {% endif %}
@@ -33,9 +32,7 @@
       {% if testorplan.fmf_id.ref %}
       <p><strong>Reference:</strong> {{ testorplan.fmf_id.ref }}</p>
       {% endif %}
-      {% if testorplan.fmf_id.name %}
-      <p><strong>Name:</strong> {{ testorplan.fmf_id.name }}</p>
-      {% endif %}
+      {# fmf_id.name is redundant since it's already in the heading #}
       {% if testorplan.fmf_id.path %}
       <p><strong>Path:</strong> {{ testorplan.fmf_id.path }}</p>
       {% endif %}
