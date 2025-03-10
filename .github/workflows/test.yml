@@ -42,23 +42,16 @@ jobs:
     - name: Create Podman pod
       run: |
         podman pod create --name tmt-web-pod --infra-image=registry.k8s.io/pause:3.9 -p 8000:8000 -p 6379:6379
-        # Exposing redis port as well for test_api.py::TestCelery::test_basic_test_request
+        # Exposing valkey port as well for background task tests
 
-    - name: Start Redis container
+    - name: Start valkey container
       run: |
-        podman run -d --pod tmt-web-pod --name redis redis:latest
-
-    - name: Start Celery container
-      run: |
-        podman run -d --pod tmt-web-pod --name celery \
-          -e REDIS_URL=redis://localhost:6379 \
-          -e API_HOSTNAME=http://localhost:8000 \
-          tmt-web:latest celery --app=tmt_web.service worker --loglevel=INFO
+        podman run -d --pod tmt-web-pod --name valkey valkey:latest
 
     - name: Start Web container
       run: |
         podman run -d --pod tmt-web-pod --name web \
-          -e REDIS_URL=redis://localhost:6379 \
+          -e VALKEY_URL=valkey://localhost:6379 \
           -e API_HOSTNAME=http://localhost:8000 \
           tmt-web:latest uvicorn tmt_web.api:app --reload --host 0.0.0.0 --port 8000
 

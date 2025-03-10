@@ -11,11 +11,12 @@ from tmt_web.formatters import deserialize_data, format_data
 from tmt_web.models import PlanData, TestData, TestPlanData
 from tmt_web.service import (
     get_tree,
-    main,
     process_plan_request,
+    process_request,
     process_test_request,
     process_testplan_request,
 )
+from tmt_web.utils.task_manager import task_manager
 
 
 @pytest.fixture
@@ -381,35 +382,32 @@ def test_process_testplan_request_with_all_attributes(mocker):
 
 
 def test_main_invalid_parameters():
-    """Test main with invalid parameter combinations."""
+    """Test directly the worker function that validates parameters."""
+    from tmt_web.service import _process_request_worker
+
     # Missing test URL
     with pytest.raises(GeneralError, match="Missing required test parameters"):
-        main(None, "test", None, None, None, None, None, None, "json")
+        _process_request_worker(None, "test", None, None, None, None, None, None, "json")
 
     # Missing plan URL
     with pytest.raises(GeneralError, match="Missing required plan parameters"):
-        main(None, None, None, None, None, "plan", None, None, "json")
+        _process_request_worker(None, None, None, None, None, "plan", None, None, "json")
 
     # Missing test URL in combined request
     with pytest.raises(GeneralError, match="Missing required test/plan parameters"):
-        main(None, "test", None, None, "url", "plan", None, None, "json")
+        _process_request_worker(None, "test", None, None, "url", "plan", None, None, "json")
 
     # Missing plan URL in combined request
     with pytest.raises(GeneralError, match="Missing required test/plan parameters"):
-        main("url", "test", None, None, None, "plan", None, None, "json")
+        _process_request_worker("url", "test", None, None, None, "plan", None, None, "json")
 
     # Invalid combination (neither test nor plan)
     with pytest.raises(GeneralError, match="Invalid combination of test and plan parameters"):
-        main(None, None, None, None, None, None, None, None, "json")
+        _process_request_worker(None, None, None, None, None, None, None, None, "json")
 
 
-def test_main_with_celery_disabled(mocker):
-    """Test main when Celery is disabled."""
-    import os
-
-    # Set environment variable to disable Celery
-    os.environ["USE_CELERY"] = "false"
-
+def test_main_direct_processing(mocker):
+    """Test main direct processing."""
     # Create a mock test
     test_data = TestData(name="test", summary="Test summary")
 
@@ -417,62 +415,90 @@ def test_main_with_celery_disabled(mocker):
     mocker.patch("tmt_web.service.process_test_request", return_value=test_data)
 
     # Mock format_data to verify it's called directly
-    mock_format = mocker.patch("tmt_web.service.format_data", return_value="formatted_data")
+    mocker.patch("tmt_web.service.format_data", return_value="formatted_data")
 
     # Mock serialize_data to ensure it's NOT called
-    mock_serialize = mocker.patch("tmt_web.service.serialize_data")
+    mocker.patch("tmt_web.service.serialize_data")
+
+    # Create a mock BackgroundTasks object
+    mock_bg_tasks = mocker.Mock()
 
     # Call main with test parameters
-    result = main("url", "test", None, None, None, None, None, None, "json")
+    result = process_request(
+        mock_bg_tasks, "url", "test", None, None, None, None, None, None, "json"
+    )
 
-    # Verify format_data was called directly
-    mock_format.assert_called_once_with(test_data, "json", mocker.ANY)
-
-    # Verify serialize_data was NOT called
-    mock_serialize.assert_not_called()
-
-    # Verify result is from format_data
-    assert result == "formatted_data"
-
-    # Reset environment
-    os.environ.pop("USE_CELERY", None)
+    # Verify the task_manager.execute_task was called
+    # Note: We don't need to verify format_data/serialize_data directly
+    # as that's now handled inside the task manager
+    assert isinstance(result, str)  # Should return a task ID
 
 
-def test_main_with_celery_enabled(mocker):
-    """Test main when Celery is enabled (coverage for line 226)."""
-    import os
-
-    # Ensure environment variable is set to enable Celery (or not set at all)
-    if "USE_CELERY" in os.environ:
-        old_value = os.environ["USE_CELERY"]
-        os.environ.pop("USE_CELERY")
-    else:
-        old_value = None
-
+def test_main_with_background_tasks(mocker):
+    """Test main with background tasks."""
     # Create a mock test
     test_data = TestData(name="test", summary="Test summary")
 
     # Mock process_test_request to return our test data
     mocker.patch("tmt_web.service.process_test_request", return_value=test_data)
 
-    # Mock format_data to verify it's NOT called directly
-    mock_format = mocker.patch("tmt_web.service.format_data")
+    # Mock the task_manager.execute_task
+    mock_task_execute = mocker.patch(
+        "tmt_web.service.task_manager.execute_task", return_value="task-123"
+    )
 
-    # Mock serialize_data to ensure it IS called and returns serialized data
-    mock_serialize = mocker.patch("tmt_web.service.serialize_data", return_value="serialized_data")
+    # Create a mock BackgroundTasks object
+    mock_bg_tasks = mocker.Mock()
 
     # Call main with test parameters
-    result = main("url", "test", None, None, None, None, None, None, "json")
+    result = process_request(
+        mock_bg_tasks, "url", "test", None, None, None, None, None, None, "json"
+    )
 
-    # Verify format_data was NOT called
-    mock_format.assert_not_called()
+    # Verify task_manager.execute_task was called with the right parameters
+    mock_task_execute.assert_called_once()
+    assert result == "task-123"
 
-    # Verify serialize_data WAS called with the test data
+
+def test_process_request_worker_no_output_format(mocker):
+    """Test _process_request_worker when no output format is specified."""
+    # Create mock data
+    test_data = TestData(name="test", summary="Test summary")
+
+    # Mock process_test_request
+    mocker.patch("tmt_web.service.process_test_request", return_value=test_data)
+
+    # Mock serialize_data
+    mock_serialize = mocker.patch("tmt_web.service.serialize_data", return_value="serialized_data")
+
+    # Call worker with None as format
+    from tmt_web.service import _process_request_worker
+
+    result = _process_request_worker("url", "test", None, None, None, None, None, None, None)
+
+    # Verify serialize_data was called instead of format_data
     mock_serialize.assert_called_once_with(test_data)
-
-    # Verify result is from serialize_data
     assert result == "serialized_data"
 
-    # Restore environment if needed
-    if old_value is not None:
-        os.environ["USE_CELERY"] = old_value
+
+def test_task_manager_update_nonexistent_task(mocker):
+    """Test updating a non-existent task in the task manager."""
+    # Mock Valkey client get method to return None (task doesn't exist)
+    mocker.patch.object(task_manager.client, "get", return_value=None)
+
+    # Mock the set method to check it's not called
+    mock_set = mocker.patch.object(task_manager.client, "set")
+
+    # Mock logger to verify warning is called
+    mock_logger = mocker.patch.object(task_manager, "logger")
+
+    # Try to update a non-existent task
+    task_manager.update_task("nonexistent-task-id", "SUCCESS", result="test result")
+
+    # Verify warning was logged
+    mock_logger.warning.assert_called_once_with(
+        "Trying to update non-existent task nonexistent-task-id"
+    )
+
+    # Verify client.set was not called (early return)
+    mock_set.assert_not_called()

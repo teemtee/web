@@ -1,6 +1,5 @@
 """Integration tests for the API."""
 
-import os
 import time
 
 import pytest
@@ -18,10 +17,6 @@ def client():
 class TestApi:
     """This class tests the behaviour of the API directly."""
 
-    @pytest.fixture(autouse=True)
-    def _setup(self):
-        os.environ["USE_CELERY"] = "false"
-
     def test_root_empty_redirects_to_docs(self, client):
         """Test that empty root path redirects to docs."""
         response = client.get("/", follow_redirects=False)
@@ -37,7 +32,9 @@ class TestApi:
         data = response.content.decode("utf-8")
         assert "500" not in data
         assert '<html lang="en">' in data
-        assert "https://github.com/teemtee/tmt/tree/main/tests/core/smoke/main.fmf" in data
+        # Now just validate it's a status page with processing indicator
+        assert "Processing..." in data
+        assert "Status: PENDING" in data
 
     def test_basic_test_request_html_with_path(self, client):
         """Test basic test request with path and default format (html)."""
@@ -51,7 +48,9 @@ class TestApi:
         data = response.content.decode("utf-8")
         assert "500" not in data
         assert '<html lang="en">' in data
-        assert "https://github.com/teemtee/tmt/tree/main/tests/execute/basic/data/test.fmf" in data
+        # Now just validate it's a status page with processing indicator
+        assert "Processing..." in data
+        assert "Status: PENDING" in data
 
     def test_basic_test_request_explicit_html(self, client):
         """Test basic test request with explicit html format."""
@@ -62,7 +61,9 @@ class TestApi:
         data = response.content.decode("utf-8")
         assert "500" not in data
         assert '<html lang="en">' in data
-        assert "Just a basic smoke test" in data
+        # Now just validate it's a status page with processing indicator
+        assert "Processing..." in data
+        assert "Status: PENDING" in data
 
     def test_basic_test_request_json(self, client):
         """Test basic test request with explicit json format."""
@@ -72,11 +73,10 @@ class TestApi:
         assert response.status_code == 200
         # Parse the response as JSON to verify it's valid JSON
         json_data = response.json()
-        assert "fmf-id" in json_data
-        assert (
-            json_data["fmf-id"]["url"]
-            == "https://github.com/teemtee/tmt/tree/main/tests/core/smoke/main.fmf"
-        )
+        # Check that we get a task status response with background task ID
+        assert "id" in json_data
+        assert json_data["status"] == "PENDING"
+        assert "status_callback_url" in json_data
 
     def test_basic_test_request_yaml(self, client):
         """Test basic test request with yaml format."""
@@ -84,9 +84,12 @@ class TestApi:
             "/?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke&format=yaml",
         )
         assert response.status_code == 200
-        data = response.content.decode("utf-8")
-        assert "500" not in data
-        assert "url: https://github.com/teemtee/tmt/tree/main/tests/core/smoke/main.fmf" in data
+        # For YAML, the response is still JSON for the task status
+        json_data = response.json()
+        # Check that we get a task status response with background task ID
+        assert "id" in json_data
+        assert json_data["status"] == "PENDING"
+        assert "status_callback_url" in json_data
 
     def test_basic_plan_request(self, client):
         """Test basic plan request with default format (html)."""
@@ -97,7 +100,9 @@ class TestApi:
         data = response.content.decode("utf-8")
         assert "500" not in data
         assert '<html lang="en">' in data
-        assert "https://github.com/teemtee/tmt/tree/main/plans/features/basic.fmf" in data
+        # Now just validate it's a status page with processing indicator
+        assert "Processing..." in data
+        assert "Status: PENDING" in data
 
     def test_basic_testplan_request(self, client):
         """Test basic testplan request with default format (html)."""
@@ -109,8 +114,9 @@ class TestApi:
         data = response.content.decode("utf-8")
         assert "500" not in data
         assert '<html lang="en">' in data
-        assert "https://github.com/teemtee/tmt/tree/main/tests/core/smoke/main.fmf" in data
-        assert "https://github.com/teemtee/tmt/tree/main/plans/features/basic.fmf" in data
+        # Now just validate it's a status page with processing indicator
+        assert "Processing..." in data
+        assert "Status: PENDING" in data
 
     def test_invalid_testplan_arguments(self, client):
         """Test invalid combination of test and plan parameters."""
@@ -124,17 +130,91 @@ class TestApi:
 
     def test_not_found_errors(self, client):
         """Test that missing tests/plans return 404."""
-        response = client.get(
-            "/?test-url=https://github.com/teemtee/tmt&test-name=/nonexistent/test",
-        )
+        # For simplicity, we'll check that the correct HTTP exception is raised
+        # in the general_exception_handler which captures GeneralError
+        from tmt.utils import GeneralError
+
+        # Trigger the exception handler with a test not found error
+        @app.get("/test-not-found-error-test")
+        def test_not_found_error():
+            raise GeneralError("Test '/nonexistent/test' not found")
+
+        response = client.get("/test-not-found-error-test")
         assert response.status_code == 404
         assert "not found" in response.json()["detail"].lower()
 
-        response = client.get(
-            "/?plan-url=https://github.com/teemtee/tmt&plan-name=/nonexistent/plan",
-        )
+        # Trigger the exception handler with a plan not found error
+        @app.get("/plan-not-found-error-test")
+        def plan_not_found_error():
+            raise GeneralError("Plan '/nonexistent/plan' not found")
+
+        response = client.get("/plan-not-found-error-test")
         assert response.status_code == 404
         assert "not found" in response.json()["detail"].lower()
+
+    def test_task_failure_generic_error(self, client, monkeypatch):
+        """Test handling a task that failed with a generic error (not 'not found')."""
+        # First create a real task to get a valid task ID
+        response = client.get(
+            "/?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke&format=json",
+        )
+        assert response.status_code == 200
+        task_data = response.json()
+        task_id = task_data["id"]
+
+        # Mock the task manager get_task_info to return a generic failure
+        def mock_get_task_info(tid):
+            return {
+                "id": tid,
+                "status": "FAILURE",
+                "error": "Some generic error occurred",
+                "result": None,
+            }
+
+        monkeypatch.setattr(
+            "tmt_web.utils.task_manager.task_manager.get_task_info", mock_get_task_info
+        )
+
+        # Now try to get the result, should return 500 with the error
+        response = client.get(f"/?task-id={task_id}&format=json")
+        assert response.status_code == 500
+        assert "Some generic error occurred" in response.json()["detail"]
+
+    def test_task_pending_status(self, client, monkeypatch):
+        """Test getting PENDING task status (covers the _to_task_out default path)."""
+        # First create a real task to get a valid task ID
+        response = client.get(
+            "/?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke&format=json",
+        )
+        assert response.status_code == 200
+        task_data = response.json()
+        task_id = task_data["id"]
+
+        # Mock the task manager get_task_info to return PENDING status
+        def mock_get_task_info(tid):
+            return {
+                "id": tid,
+                "status": "PENDING",
+                "result": None,
+            }
+
+        monkeypatch.setattr(
+            "tmt_web.utils.task_manager.task_manager.get_task_info", mock_get_task_info
+        )
+
+        # Test with JSON format
+        response = client.get(f"/status?task-id={task_id}")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "PENDING"
+        assert "/status?task-id=" in data["status_callback_url"]
+
+        # Test with HTML format to cover line 392
+        response = client.get(f"/?task-id={task_id}&format=html")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "PENDING"
+        assert "/status/html?task-id=" in data["status_callback_url"]
 
     def test_status_endpoint_no_task_id(self, client):
         """Test /status endpoint with no task_id parameter."""
@@ -159,42 +239,33 @@ class TestApi:
         assert "tmt" in data["version"]
 
         # Check dependencies
-        assert "celery" in data["dependencies"]
-        assert "redis" in data["dependencies"]
-        # When Celery is disabled, dependencies should be marked as disabled
-        assert data["dependencies"]["celery"] == "disabled"
-        assert data["dependencies"]["redis"] == "disabled"
+        assert "valkey" in data["dependencies"]
+        assert data["dependencies"]["valkey"] in ["ok", "failed"]
 
         # Check system info
         assert "platform" in data["system"]
         assert "hostname" in data["system"]
         assert "python_implementation" in data["system"]
 
-    def test_health_check_redis_error(self, client, monkeypatch):
-        """Test health check when Redis ping fails."""
-        # Enable Celery for this test
-        os.environ["USE_CELERY"] = "true"
+    def test_health_check_valkey_error(self, client, monkeypatch):
+        """Test health check when Valkey ping fails."""
 
-        # Mock Redis ping to fail
+        # Mock Valkey ping to fail
         def mock_ping(*args, **kwargs):
-            raise Exception("Redis connection failed")
+            raise Exception("Valkey connection failed")
 
-        monkeypatch.setattr("tmt_web.service.main.app.control.ping", mock_ping)
+        monkeypatch.setattr("tmt_web.utils.task_manager.task_manager.client.ping", mock_ping)
 
         response = client.get("/health")
         assert response.status_code == 200
         data = response.json()
 
-        assert data["dependencies"]["celery"] == "failed"
-        assert data["dependencies"]["redis"] == "failed"
+        assert data["dependencies"]["valkey"] == "failed"
+        assert data["status"] == "ok"  # Overall status should still be ok
 
 
-class TestCelery:
-    """This class tests the API with the Celery instance."""
-
-    @pytest.fixture(autouse=True)
-    def _setup(self):
-        os.environ["USE_CELERY"] = "true"
+class TestBackgroundTasks:
+    """This class tests the API with background tasks."""
 
     def test_basic_test_request_json(self, client):
         """Test basic test request with explicit json format."""
@@ -397,13 +468,21 @@ class TestCelery:
                 break
             time.sleep(0.1)
 
-    def test_root_endpoint_with_invalid_task_id(self, client):
+    def test_root_endpoint_with_invalid_task_id(self, client, monkeypatch):
         """Test root endpoint with invalid task ID."""
+
+        # Mock the task manager to handle invalid task IDs
+        def mock_get_task_info(tid):
+            return {"id": tid, "status": "FAILURE", "error": "Task not found", "result": None}
+
+        monkeypatch.setattr(
+            "tmt_web.utils.task_manager.task_manager.get_task_info", mock_get_task_info
+        )
+
         response = client.get("/?task-id=invalid-task-id")
-        assert response.status_code == 200  # Returns 200 with pending status
+        assert response.status_code == 404  # Should return 404 not found
         data = response.json()
-        assert data["status"] == "PENDING"
-        assert data["id"] == "invalid-task-id"
+        assert "Task not found" in data["detail"]
 
     def test_status_html_endpoint_missing_task_id(self, client):
         response = client.get("/status/html")
@@ -431,8 +510,8 @@ class TestCelery:
         assert "Task Status" in data
         assert "Status: PENDING" in data
 
-    def test_not_found_with_celery(self, client):
-        """Test that missing tests/plans return 404 with Celery."""
+    def test_not_found_with_background_tasks(self, client):
+        """Test that missing tests/plans return 404 with background tasks."""
         # Initial request creates a task - use explicit JSON format
         response = client.get(
             "/?test-url=https://github.com/teemtee/tmt&test-name=/nonexistent/test&format=json",
@@ -466,15 +545,14 @@ class TestCelery:
             else:
                 pytest.fail(f"Unexpected status code: {response.status_code}")
 
-    def test_health_check_with_celery(self, client):
-        """Test health check endpoint with Celery enabled."""
+    def test_health_check_with_valkey(self, client):
+        """Test health check endpoint with Valkey."""
         response = client.get("/health")
         assert response.status_code == 200
         data = response.json()
 
-        # Dependencies should be ok when Celery is enabled and running
-        assert data["dependencies"]["celery"] == "ok"
-        assert data["dependencies"]["redis"] == "ok"
+        # Dependencies should be ok when Valkey is running
+        assert data["dependencies"]["valkey"] == "ok"
 
     def test_task_result_error_handling(self, client, monkeypatch):
         """Test error handling in _handle_task_result when deserialization fails."""
@@ -486,25 +564,17 @@ class TestCelery:
         task_data = response.json()
         task_id = task_data["id"]
 
-        # Create a real AsyncResult first to understand its properties
-        from celery.result import AsyncResult
+        # Mock the task manager get_task_info to return a malformed result
+        def mock_get_task_info(tid):
+            return {
+                "id": tid,
+                "status": "SUCCESS",
+                "result": '{"corrupt": "json with malformed structure',  # Malformed JSON
+            }
 
-        AsyncResult(task_id)
-
-        # Now create a mock that better represents a real task result
-        from unittest.mock import MagicMock
-
-        mock_result = MagicMock(spec=AsyncResult)
-        mock_result.task_id = task_id
-        mock_result.failed.return_value = False
-        mock_result.successful.return_value = True
-
-        # Set a result that looks like valid serialized data but will cause
-        # deserialize_data to fail when trying to process it
-        mock_result.result = '{"corrupt": "json with malformed structure'
-
-        # Use the mock to replace the real AsyncResult when it's fetched by task_id
-        monkeypatch.setattr("tmt_web.service.main.app.AsyncResult", lambda tid: mock_result)
+        monkeypatch.setattr(
+            "tmt_web.utils.task_manager.task_manager.get_task_info", mock_get_task_info
+        )
 
         # Now try to get the result, which should trigger the error handling
         response = client.get(f"/?task-id={task_id}&format=json")
@@ -521,31 +591,22 @@ class TestCelery:
         task_data = response.json()
         task_id = task_data["id"]
 
-        # Create a real AsyncResult first to understand its properties
-        from celery.result import AsyncResult
-
-        AsyncResult(task_id)
-
-        # Study the actual error format from service.py:
-        # GeneralError(f"Test '{test_name}' not found") from line 86
-        # GeneralError(f"Plan '{plan_name}' not found") from line 118
-
-        # Setup a task that failed with a "not found" error in the expected format
-        from unittest.mock import MagicMock
-
+        # Mock the task manager get_task_info to return a not found error
         from tmt.utils import GeneralError
 
-        # Create the exact error format that would be raised in service.py
         error = GeneralError("Test '/nonexistent/test' not found")
 
-        mock_result = MagicMock(spec=AsyncResult)
-        mock_result.task_id = task_id
-        mock_result.failed.return_value = True
-        mock_result.successful.return_value = False
-        # Use str(error) to get the exact string format that would be seen in the API
-        mock_result.result = str(error)
+        def mock_get_task_info(tid):
+            return {
+                "id": tid,
+                "status": "FAILURE",
+                "error": str(error),
+                "result": None,
+            }
 
-        monkeypatch.setattr("tmt_web.service.main.app.AsyncResult", lambda tid: mock_result)
+        monkeypatch.setattr(
+            "tmt_web.utils.task_manager.task_manager.get_task_info", mock_get_task_info
+        )
 
         # Now try to get the result, which should trigger a 404 error
         response = client.get(f"/?task-id={task_id}&format=json")
@@ -607,7 +668,7 @@ class TestCelery:
         """Test the error for invalid combination of test and plan parameters."""
         from tmt.utils import GeneralError
 
-        # Since we're in TestCelery class and USE_CELERY=true, we need to mock the API's _validate_parameters
+        # Since we're testing asynchronous behavior, we need to mock the API's _validate_parameters
         # function instead, which is called before service.main
         def simulate_invalid_combination(*args, **kwargs):
             raise GeneralError("Invalid combination of test and plan parameters")

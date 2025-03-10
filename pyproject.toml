@@ -19,7 +19,6 @@ classifiers = [
   "Programming Language :: Python",
   "Programming Language :: Python :: 3.12",
   "Framework :: FastAPI",
-  "Framework :: Celery",
   "Topic :: Software Development :: Testing",
   "Operating System :: POSIX :: Linux",
 ]
@@ -28,7 +27,7 @@ dependencies = [
   "fastapi~=0.115",
   "httpx~=0.27",
   "uvicorn~=0.30",
-  "celery[redis]~=5.4",
+  "valkey",
 ]
 
 [project.urls]
@@ -134,7 +133,10 @@ lint.ignore = [
     "S101",  # Assert usage
     "PLR",  # Pylint refactor
     "E501",  # Line length
-    ]
+]
+"src/tmt_web/generators/html_generator.py" = [
+    "E501",  # Line length
+]
 
 [tool.ruff.lint.pydocstyle]
 convention = "pep257"
@@ -156,3 +158,15 @@ no_implicit_reexport = true
 
 python_version = "3.12"
 files = ["src/"]
+
+[tool.pytest.ini_options]
+# Filter out specific warnings
+filterwarnings = [
+    # Ignore pytest collection warnings for model classes that start with 'Test'
+    "ignore:cannot collect test class 'TestData' because it has a __init__ constructor:pytest.PytestCollectionWarning",
+    "ignore:cannot collect test class 'TestPlanData' because it has a __init__ constructor:pytest.PytestCollectionWarning",
+    # Ignore pint and docutils deprecations from tmt
+    "ignore:The frontend.OptionParser class will be replaced:DeprecationWarning",
+    "ignore:The frontend.Option class will be removed:DeprecationWarning",
+    "ignore:This function will be removed in future versions of pint.:DeprecationWarning"
+]

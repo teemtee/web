@@ -1,7 +1,6 @@
 """Unit tests for HTML generator."""
 
 import logging
-from unittest.mock import Mock
 
 import pytest
 import tmt
@@ -123,10 +122,12 @@ class TestHtmlGenerator:
 
     def test_generate_status_callback_pending(self, logger):
         """Test status callback page for pending task."""
-        result = Mock(status="PENDING", result=None)
+        task_id = "123-abc"
         callback_url = "http://example.com/status"
 
-        data = html_generator.generate_status_callback(result, callback_url, logger)
+        data = html_generator.generate_status_callback(
+            task_id, callback_url, logger, status="PENDING", result=None
+        )
 
         assert "<!DOCTYPE html>" in data
         assert "<h1>Processing...</h1>" in data
@@ -137,10 +138,12 @@ class TestHtmlGenerator:
 
     def test_generate_status_callback_retrying(self, logger):
         """Test status callback page for retrying task."""
-        result = Mock(status="RETRYING", result=None)
+        task_id = "123-abc"
         callback_url = "http://example.com/status"
 
-        data = html_generator.generate_status_callback(result, callback_url, logger)
+        data = html_generator.generate_status_callback(
+            task_id, callback_url, logger, status="RETRYING", result=None
+        )
 
         assert "<!DOCTYPE html>" in data
         assert "<h1>Retrying...</h1>" in data
@@ -150,11 +153,13 @@ class TestHtmlGenerator:
 
     def test_generate_status_callback_success(self, logger):
         """Test status callback page for successful task."""
+        task_id = "123-abc"
         html_result = "<div>Test Result</div>"
-        result = Mock(status="SUCCESS", result=html_result)
         callback_url = "http://example.com/status"
 
-        data = html_generator.generate_status_callback(result, callback_url, logger)
+        data = html_generator.generate_status_callback(
+            task_id, callback_url, logger, status="SUCCESS", result=html_result
+        )
 
         assert "<!DOCTYPE html>" in data
         assert html_result in data  # HTML should be included directly
@@ -162,11 +167,13 @@ class TestHtmlGenerator:
 
     def test_generate_status_callback_failure(self, logger):
         """Test status callback page for failed task."""
+        task_id = "123-abc"
         error_msg = "Test failed: Something went wrong"
-        result = Mock(status="FAILURE", result=error_msg)
         callback_url = "http://example.com/status"
 
-        data = html_generator.generate_status_callback(result, callback_url, logger)
+        data = html_generator.generate_status_callback(
+            task_id, callback_url, logger, status="FAILURE", result=error_msg
+        )
 
         assert "<!DOCTYPE html>" in data
         assert "<h1>Task Failed</h1>" in data
@@ -176,10 +183,12 @@ class TestHtmlGenerator:
 
     def test_generate_status_callback_unknown(self, logger):
         """Test status callback page for unknown status."""
-        result = Mock(status="UNKNOWN", result="Some result")
+        task_id = "123-abc"
         callback_url = "http://example.com/status"
 
-        data = html_generator.generate_status_callback(result, callback_url, logger)
+        data = html_generator.generate_status_callback(
+            task_id, callback_url, logger, status="UNKNOWN", result="Some result"
+        )
 
         assert "<!DOCTYPE html>" in data
         assert "<h1>Task Status</h1>" in data

@@ -12,10 +12,10 @@ podman-compose up --build
 
 Add `-d` for the service to run in the background.
 
-In order to quickly experiment without using Celery use this:
+For quick development without container setup:
 
 ```bash
-USE_CELERY=false CLONE_DIR_PATH=/var/tmp/test uvicorn tmt_web.api:app --reload --host 0.0.0.0 --port 8000
+CLONE_DIR_PATH=/var/tmp/test uvicorn tmt_web.api:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ## Tests
@@ -29,14 +29,18 @@ Run `hatch env show` to see the list of available environments and their scripts
 
 ## Environment variables
 
-- `REDIS_URL` - *optional*, passed to Celery on initialization as a `broker` and
-  `backend` argument, default value is: `redis://localhost:6379`
+- `VALKEY_URL` - *optional*, connection URL for Valkey which is used for storing task state,
+  default value is: `valkey://localhost:6379`
 - `CLONE_DIR_PATH` - *optional*, specifies the path where the repositories will
   be cloned, default value is: `./.repos/`
-- `USE_CELERY` - *optional*, specifies if the app should use Celery, set to
-  `false` for running without Celery
 - `API_HOSTNAME` - *required*, specifies the hostname of the API, used for
   creating the callback URL to the service
+
+## Architecture
+
+The application uses FastAPI's built-in background tasks for asynchronous processing and
+Valkey for task state storage. This architecture provides a lightweight and efficient
+solution for handling long-running tasks without requiring external task queue infrastructure.
 
 ## API
 
@@ -50,7 +54,7 @@ exclusive.
 
 ### `/`
 
-Returns ID of the created Celery task with additional metadata in JSON
+Returns ID of the created background task with additional metadata in JSON
 and callback url for `/status` endpoint, returns the same in HTML format
 if `format` is set to `html`.
 

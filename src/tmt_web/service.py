@@ -1,25 +1,22 @@
-"""Service layer for tmt-web."""
+"""Service layer for tmt-web using FastAPI background tasks and Valkey."""
 
 import logging
-from os import environ
 from typing import Literal
 
 import tmt
-from celery.app import Celery  # type: ignore[attr-defined]
+from fastapi import BackgroundTasks
 from tmt import Logger
 from tmt._compat.pathlib import Path
 from tmt.utils import GeneralError, GitUrlError
 
-from tmt_web import settings
 from tmt_web.converters import create_testplan_data, plan_to_model, test_to_model
 from tmt_web.formatters import format_data, serialize_data
 from tmt_web.models import PlanData, TestData, TestPlanData
 from tmt_web.utils import git_handler
+from tmt_web.utils.task_manager import task_manager
 
 # Create main logger for the application
 logger = Logger(logging.getLogger("tmt-web"))
-
-app = Celery(__name__, broker=settings.REDIS_URL, backend=settings.REDIS_URL)
 
 
 def get_tree(url: str, name: str, ref: str | None, tree_path: str | None) -> tmt.base.Tree:
@@ -166,8 +163,8 @@ def process_testplan_request(
     return create_testplan_data(test, plan)
 
 
-@app.task
-def main(
+def process_request(
+    background_tasks: BackgroundTasks,
     test_url: str | None,
     test_name: str | None,
     test_ref: str | None,
@@ -181,14 +178,59 @@ def main(
     """
     Main entry point for processing requests.
 
-    Returns serialized data that can be formatted later according to the requested format.
-    The actual formatting happens in the API layer when retrieving results.
+    Creates a background task for processing the request and returns a task ID.
 
+    :param background_tasks: FastAPI BackgroundTasks object
+    :param test_url: Test URL
+    :param test_name: Test name
+    :param test_ref: Test repo ref (optional)
+    :param test_path: Test path (optional)
+    :param plan_url: Plan URL
+    :param plan_name: Plan name
+    :param plan_ref: Plan repo ref (optional)
+    :param plan_path: Plan path (optional)
+    :param out_format: Output format
+    :return: Task ID for tracking the task
     :raises: GeneralError for invalid argument combinations
     """
     logger.debug("Starting request processing")
     logger.debug("Validating input parameters")
 
+    # Use task manager to create and execute the background task
+    return task_manager.execute_task(
+        background_tasks=background_tasks,
+        func=_process_request_worker,
+        test_url=test_url,
+        test_name=test_name,
+        test_ref=test_ref,
+        test_path=test_path,
+        plan_url=plan_url,
+        plan_name=plan_name,
+        plan_ref=plan_ref,
+        plan_path=plan_path,
+        out_format=out_format,
+    )
+
+
+def _process_request_worker(
+    test_url: str | None,
+    test_name: str | None,
+    test_ref: str | None,
+    test_path: str | None,
+    plan_url: str | None,
+    plan_name: str | None,
+    plan_ref: str | None,
+    plan_path: str | None,
+    out_format: Literal["html", "json", "yaml"],
+) -> str:
+    """
+    Worker function for processing requests in background.
+
+    This function is meant to be executed by the task manager.
+    Returns serialized data that can be formatted later according to the requested format.
+
+    :raises: GeneralError for invalid argument combinations
+    """
     data: TestData | PlanData | TestPlanData
     if test_name is not None and plan_name is None:
         if test_url is None:
@@ -218,8 +260,8 @@ def main(
         logger.fail("Invalid combination of test and plan parameters")
         raise GeneralError("Invalid combination of test and plan parameters")
 
-    # Format immediately if Celery is disabled
-    if environ.get("USE_CELERY") == "false":
+    # Format immediately if requested, otherwise store serialized data
+    if out_format:
         return format_data(data, out_format, logger)
 
     # Otherwise store raw data for later formatting

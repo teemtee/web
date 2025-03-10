@@ -17,9 +17,6 @@ case $APP in
     uvicorn)
         COMMAND="uvicorn tmt_web.api:app --reload --host 0.0.0.0 --port 8000"
         ;;
-    celery)
-        COMMAND="celery --app=tmt_web.service worker --loglevel=INFO"
-        ;;
     *)
         error "Unknown app '$APP'"
         ;;
