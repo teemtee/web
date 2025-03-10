@@ -88,7 +88,12 @@ class TestHtmlGenerator:
 
         # Check content
         assert f"<h1>{test_data.name}</h1>" in data
-        assert f"<p><strong>Name:</strong> {test_data.name}</p>" in data
+
+        # Name should not be shown as metadata since it's now the heading
+        assert f"<p><strong>Name:</strong> {test_data.name}</p>" not in data
+
+        # Also make sure fmf_id.name is not displayed
+        assert f"<p><strong>Name:</strong> {test_data.fmf_id.name}</p>" not in data
         assert test_data.summary in data
 
     def test_generate_testplan_html(self, test_data, plan_data, logger):
@@ -101,14 +106,20 @@ class TestHtmlGenerator:
         assert "Test and Plan Information" in data
 
         # Check test content
-        assert "Test Information" in data
-        assert f"<p><strong>Name:</strong> {test_data.name}</p>" in data
+        assert f"<h1>{test_data.name}</h1>" in data
+        assert f"<p><strong>Name:</strong> {test_data.name}</p>" not in data
+
+        # Also make sure fmf_id.name is not displayed
+        assert f"<p><strong>Name:</strong> {test_data.fmf_id.name}</p>" not in data
         assert test_data.summary in data
 
         # Check plan content
-        assert "Plan Information" in data
-        assert f"<p><strong>Name:</strong> {plan_data.name}</p>" in data
+        assert f"<h1>{plan_data.name}</h1>" in data
+        assert f"<p><strong>Name:</strong> {plan_data.name}</p>" not in data
         assert plan_data.summary in data
+
+        # Also make sure fmf_id.name is not displayed
+        assert f"<p><strong>Name:</strong> {plan_data.fmf_id.name}</p>" not in data
 
     def test_generate_status_callback_pending(self, logger):
         """Test status callback page for pending task."""
