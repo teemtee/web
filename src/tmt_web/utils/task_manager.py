@@ -72,7 +72,16 @@ class TaskManager:
                 "result": None,
             }
 
-        return json.loads(task_data)
+        try:
+            return json.loads(task_data)
+        except json.JSONDecodeError:
+            self.logger.fail(f"Corrupted task data for {task_id}")
+            return {
+                "id": task_id,
+                "status": FAILURE,
+                "error": "Corrupted task data",
+                "result": None,
+            }
 
     def update_task(
         self, task_id: str, status: str, result: Any = None, error: str | None = None
