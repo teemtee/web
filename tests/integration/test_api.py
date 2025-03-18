@@ -508,7 +508,9 @@ class TestBackgroundTasks:
         assert response.status_code == 200  # Still returns 200 as it shows a status page
         data = response.content.decode("utf-8")
         assert "Task Status" in data
-        assert "Status: PENDING" in data
+        assert "Status: FAILURE" in data  # Now returns FAILURE for invalid task IDs
+        assert "Task Failed" in data  # Should show failure state
+        assert "Error: Task not found" in data  # Now properly displays the error message
 
     def test_not_found_with_background_tasks(self, client):
         """Test that missing tests/plans return 404 with background tasks."""

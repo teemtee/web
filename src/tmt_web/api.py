@@ -379,8 +379,20 @@ def get_task_status_html(
         )
 
     status_callback_url = f"{settings.API_HOSTNAME}/status/html?task-id={task_id}"
+
+    # For FAILURE status, use the error message if available
+    result = task_info.get("result")
+    if task_info["status"] == FAILURE and task_info.get("error"):
+        result = task_info["error"]
+
     return HTMLResponse(
-        content=html_generator.generate_status_callback(task_id, status_callback_url, logger),
+        content=html_generator.generate_status_callback(
+            task_id,
+            status_callback_url,
+            logger,
+            status=task_info["status"],
+            result=result,
+        ),
     )
 
 

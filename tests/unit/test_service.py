@@ -1,5 +1,6 @@
 """Unit tests for the service layer."""
 
+import json
 import logging
 from unittest.mock import Mock
 
@@ -502,3 +503,65 @@ def test_task_manager_update_nonexistent_task(mocker):
 
     # Verify client.set was not called (early return)
     mock_set.assert_not_called()
+
+
+def test_task_manager_get_corrupted_task(mocker):
+    """Test getting a task with corrupted JSON data."""
+    # Mock Valkey client get method to return invalid JSON
+    mocker.patch.object(task_manager.client, "get", return_value=b"not valid json")
+
+    # Mock logger to verify error is logged
+    mock_logger = mocker.patch.object(task_manager, "logger")
+
+    # Get a task with corrupted data
+    result = task_manager.get_task_info("corrupted-task-id")
+
+    # Verify error was logged
+    mock_logger.fail.assert_called_once_with("Corrupted task data for corrupted-task-id")
+
+    # Verify returned data has expected error state
+    assert result["id"] == "corrupted-task-id"
+    assert result["status"] == "FAILURE"
+    assert result["error"] == "Corrupted task data"
+    assert result["result"] is None
+
+
+def test_task_manager_update_decode_error(mocker):
+    """Test updating a task with corrupted JSON data."""
+    # Mock Valkey client get method to return invalid JSON
+    mocker.patch.object(task_manager.client, "get", return_value=b"not valid json")
+
+    # Mock logger to verify error is logged
+    mock_logger = mocker.patch.object(task_manager, "logger")
+
+    # Update a task with corrupted data
+    task_manager.update_task("corrupted-task-id", "SUCCESS", result="test result")
+
+    # Verify error was logged
+    mock_logger.fail.assert_called_once_with("Failed to decode task data for corrupted-task-id")
+
+
+def test_task_manager_update_encode_error(mocker):
+    """Test updating a task with data that can't be encoded to JSON."""
+
+    # Create a mock object that can't be JSON serialized
+    class UnserializableObject:
+        pass
+
+    unserializable = UnserializableObject()
+
+    # Mock Valkey client get method to return valid task data
+    valid_task_data = json.dumps(
+        {"id": "task-id", "status": "PENDING", "created_at": "2023-01-01T00:00:00+00:00"}
+    ).encode()
+    mocker.patch.object(task_manager.client, "get", return_value=valid_task_data)
+
+    # Mock logger to verify error is logged
+    mock_logger = mocker.patch.object(task_manager, "logger")
+
+    # Update a task with unserializable data
+    task_manager.update_task("task-id", "SUCCESS", result=unserializable)
+
+    # Verify error was logged
+    assert mock_logger.fail.call_count == 1
+    assert "Failed to encode task data for task-id" in mock_logger.fail.call_args[0][0]
