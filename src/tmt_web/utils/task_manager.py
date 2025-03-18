@@ -85,20 +85,25 @@ class TaskManager:
             self.logger.warning(f"Trying to update non-existent task {task_id}")
             return
 
-        task_info = json.loads(task_data)
-        task_info["status"] = status
+        try:
+            task_info = json.loads(task_data)
+            task_info["status"] = status
 
-        if result is not None:
-            task_info["result"] = result
+            if result is not None:
+                task_info["result"] = result
 
-        if error is not None:
-            task_info["error"] = error
+            if error is not None:
+                task_info["error"] = error
 
-        # Update timestamp
-        task_info["updated_at"] = datetime.now(tz=UTC).isoformat()
+            # Update timestamp
+            task_info["updated_at"] = datetime.now(tz=UTC).isoformat()
 
-        # Store updated info
-        self.client.set(task_key, json.dumps(task_info), ex=DEFAULT_TASK_EXPIRY)
+            # Store updated info
+            self.client.set(task_key, json.dumps(task_info), ex=DEFAULT_TASK_EXPIRY)
+        except json.JSONDecodeError:
+            self.logger.fail(f"Failed to decode task data for {task_id}")
+        except (TypeError, ValueError) as e:
+            self.logger.fail(f"Failed to encode task data for {task_id}: {e}")
 
     def execute_task(
         self,
