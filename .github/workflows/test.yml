@@ -46,7 +46,7 @@ jobs:
 
     - name: Start valkey container
       run: |
-        podman run -d --pod tmt-web-pod --name valkey valkey/valkey:latest
+        podman run -d --pod tmt-web-pod --name valkey valkey/valkey:alpine
 
     - name: Start Web container
       run: |

@@ -91,7 +91,7 @@ class TaskManager:
         task_data = self.client.get(task_key)
 
         if not task_data:
-            self.logger.warning(f"Trying to update non-existent task {task_id}")
+            self.logger.fail(f"Trying to update non-existent task {task_id}")
             return
 
         try:
