@@ -4,7 +4,6 @@ services:
     build:
       context: .
       dockerfile: ./Containerfile
-    command: uvicorn tmt_web.api:app --reload --host 0.0.0.0 --port 8000
     environment:
       - VALKEY_URL=valkey://valkey:6379
       - API_HOSTNAME=http://localhost:8000
@@ -23,7 +22,7 @@ services:
 
   valkey:
     container_name: valkey
-    image: valkey:alpine
+    image: valkey/valkey:alpine
     ports:
       - 6379:6379
     healthcheck:

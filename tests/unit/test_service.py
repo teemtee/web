@@ -497,7 +497,7 @@ def test_task_manager_update_nonexistent_task(mocker):
     task_manager.update_task("nonexistent-task-id", "SUCCESS", result="test result")
 
     # Verify warning was logged
-    mock_logger.warning.assert_called_once_with(
+    mock_logger.fail.assert_called_once_with(
         "Trying to update non-existent task nonexistent-task-id"
     )
 
