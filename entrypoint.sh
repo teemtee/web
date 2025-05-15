@@ -8,21 +8,8 @@ error() {
 # Handle signals
 trap 'kill -TERM $PID' TERM INT
 
-# Name of container to start
-APP=$1
+uvicorn tmt_web.api:app --reload --host 0.0.0.0 --port 8000 &
 
-[ -z "$APP" ] && error "No app to run passed to entrypoint script"
-
-case $APP in
-    uvicorn)
-        COMMAND="uvicorn tmt_web.api:app --reload --host 0.0.0.0 --port 8000"
-        ;;
-    *)
-        error "Unknown app '$APP'"
-        ;;
-esac
-
-$COMMAND &
 PID=$!
 
 wait $PID
