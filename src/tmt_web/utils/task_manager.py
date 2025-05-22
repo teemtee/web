@@ -35,6 +35,14 @@ class TaskManager:
         self.client = Valkey.from_url(settings.VALKEY_URL)
         self.logger.debug(f"Connected to Valkey at {settings.VALKEY_URL}")
 
+    def ping(self) -> bool:
+        """Check connectivity to Valkey.
+
+        Returns:
+            True if connection is successful, otherwise raises an exception
+        """
+        return self.client.ping()
+
     def _get_task_key(self, task_id: str) -> str:
         """Get the Valkey key for a task."""
         return f"task:{task_id}"

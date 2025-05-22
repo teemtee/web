@@ -254,7 +254,7 @@ class TestApi:
         def mock_ping(*args, **kwargs):
             raise Exception("Valkey connection failed")
 
-        monkeypatch.setattr("tmt_web.utils.task_manager.task_manager.client.ping", mock_ping)
+        monkeypatch.setattr("tmt_web.utils.task_manager.task_manager.ping", mock_ping)
 
         response = client.get("/health")
         assert response.status_code == 200

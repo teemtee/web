@@ -345,6 +345,10 @@ def get_task_status(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=error_message,
             )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=error_message or "Task failed",
+        )
 
     return _to_task_out(task_info)
 
@@ -430,7 +434,7 @@ def health_check() -> HealthStatus:
     valkey_status = "ok"
     try:
         # Ping Valkey
-        task_manager.client.ping()
+        task_manager.ping()
     except Exception:
         valkey_status = "failed"
 
