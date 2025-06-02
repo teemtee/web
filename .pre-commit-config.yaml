@@ -24,7 +24,6 @@ repos:
         additional_dependencies:
           - 'tmt'
           - 'pydantic'
-          - 'celery-types'
         pass_filenames: false
 
   - repo: https://github.com/charliermarsh/ruff-pre-commit

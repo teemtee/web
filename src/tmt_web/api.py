@@ -1,15 +1,13 @@
-"""API layer for tmt-web."""
+"""API layer for tmt-web using FastAPI background tasks and Valkey."""
 
 import json
 import logging
 import platform
 import time
 from datetime import UTC, datetime
-from os import environ
 from typing import Annotated, Any, Literal
 
-from celery.result import AsyncResult
-from fastapi import FastAPI, HTTPException, Request, status
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Request, status
 from fastapi.params import Query
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
 from pydantic import BaseModel
@@ -20,6 +18,7 @@ from tmt.utils import GeneralError
 from tmt_web import service, settings
 from tmt_web.formatters import deserialize_data, format_data
 from tmt_web.generators import html_generator
+from tmt_web.utils.task_manager import FAILURE, SUCCESS, task_manager
 
 # Record start time for uptime calculation
 START_TIME = time.time()
@@ -56,8 +55,7 @@ class VersionInfo(BaseModel):
 class DependencyStatus(BaseModel):
     """Dependency status model."""
 
-    celery: str
-    redis: str
+    valkey: str
 
 
 class SystemInfo(BaseModel):
@@ -107,26 +105,38 @@ def _validate_parameters(
 
 
 def _handle_task_result(
-    task_result: AsyncResult,  # type: ignore[type-arg]
+    task_id: str,
     out_format: str,
 ) -> HTMLResponse | JSONResponse | PlainTextResponse:
     """Handle task result and return appropriate response."""
-    if task_result.failed():
-        error_message = str(task_result.result)
-        if "not found" in error_message.lower():
+    task_info = task_manager.get_task_info(task_id)
+
+    if task_info["status"] == FAILURE:
+        error_message = task_info.get("error", "Unknown error")
+        if error_message and "not found" in error_message.lower():
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=error_message,
             )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=error_message or "Task failed",
+        )
 
-    if task_result.successful() and task_result.result:
+    if task_info["status"] == SUCCESS and task_info["result"]:
         try:
-            logger.debug(f"Task result: {task_result.result}")
-            # Deserialize the stored data and format it according to the requested format
-            result_str = str(task_result.result)  # Ensure we have a string
-            data = deserialize_data(result_str)
-            logger.debug(f"Deserialized data: {data}")
-            formatted_result = format_data(data, out_format, logger)
+            logger.debug(f"Task result: {task_info['result']}")
+            result_str = str(task_info["result"])
+
+            # Check if result is already formatted or needs formatting
+            try:
+                # Try to deserialize - if it works, the result needs formatting
+                data = deserialize_data(result_str)
+                formatted_result = format_data(data, out_format, logger)
+            except Exception:
+                # If deserialization fails, assume the result is already formatted
+                formatted_result = result_str
+
             logger.debug(f"Formatted result: {formatted_result}")
 
             if out_format == "html":
@@ -141,69 +151,8 @@ def _handle_task_result(
                 detail=f"Error handling task result: {e}",
             ) from e
 
-    task_out = _to_task_out(task_result, out_format)
+    task_out = _to_task_out(task_info, out_format)
     return JSONResponse(content=task_out.model_dump())
-
-
-def _process_synchronous_request(
-    service_args: dict[str, Any],
-    out_format: str,
-) -> HTMLResponse | JSONResponse | PlainTextResponse:
-    """Process request synchronously without Celery."""
-    logger.debug("Celery disabled, processing request synchronously")
-    result = service.main(**service_args)
-    if out_format == "html":
-        return HTMLResponse(content=result)
-    if out_format == "json":
-        return JSONResponse(content=json.loads(result))
-    return PlainTextResponse(content=result)
-
-
-def _process_async_request(
-    service_args: dict[str, Any],
-    out_format: str,
-) -> HTMLResponse | JSONResponse:
-    """Process request asynchronously with Celery."""
-    logger.debug("Processing request asynchronously with Celery")
-    task_result = service.main.delay(**service_args)
-
-    if out_format == "html":
-        logger.debug("Generating HTML status callback")
-        status_callback_url = f"{settings.API_HOSTNAME}/status/html?task-id={task_result.task_id}"
-        return HTMLResponse(
-            content=html_generator.generate_status_callback(
-                task_result, status_callback_url, logger
-            ),
-        )
-
-    task_out = _to_task_out(task_result, out_format)
-    return JSONResponse(content=task_out.model_dump())
-
-
-@app.exception_handler(GeneralError)
-async def general_exception_handler(request: Request, exc: GeneralError):
-    """Global exception handler for all tmt errors."""
-    logger.fail(str(exc))
-
-    # Map specific error messages to appropriate status codes
-    if "not found" in str(exc).lower():
-        status_code = status.HTTP_404_NOT_FOUND
-    elif any(
-        msg in str(exc).lower()
-        for msg in [
-            "must be provided together",
-            "missing required",
-            "invalid combination",
-        ]
-    ):
-        status_code = status.HTTP_400_BAD_REQUEST
-    else:
-        status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-
-    return JSONResponse(
-        status_code=status_code,
-        content={"detail": str(exc)},
-    )
 
 
 # Sample url: https://tmt.org/?test-url=https://github.com/teemtee/tmt&test-name=/tests/core/smoke
@@ -211,6 +160,7 @@ async def general_exception_handler(request: Request, exc: GeneralError):
 @app.get("/", response_model=TaskOut | str)
 def root(
     request: Request,
+    background_tasks: BackgroundTasks,
     task_id: Annotated[
         str | None,
         Query(
@@ -293,7 +243,7 @@ def root(
 ) -> TaskOut | HTMLResponse | JSONResponse | PlainTextResponse | RedirectResponse:
     """Process a request for test, plan, or both.
 
-    Returns test/plan information in the specified format. For HTML format with Celery enabled,
+    Returns test/plan information in the specified format. For HTML format,
     returns a status page that will update to show the final result.
 
     If no parameters are provided, redirects to API documentation.
@@ -305,29 +255,64 @@ def root(
     # If task_id is provided, return the task status directly
     if task_id:
         logger.debug(f"Fetching existing task status for {task_id}")
-        task_result = service.main.app.AsyncResult(task_id)
-        return _handle_task_result(task_result, out_format)
+        return _handle_task_result(task_id, out_format)
 
     # Parameter validations for new task creation
     logger.debug("Validating request parameters")
     _validate_parameters(test_url, test_name, plan_url, plan_name)
 
-    service_args = {
-        "test_url": test_url,
-        "test_name": test_name,
-        "test_ref": test_ref,
-        "plan_url": plan_url,
-        "plan_name": plan_name,
-        "plan_ref": plan_ref,
-        "out_format": out_format,
-        "test_path": test_path,
-        "plan_path": plan_path,
-    }
+    # Process request with background tasks
+    task_id = service.process_request(
+        background_tasks=background_tasks,
+        test_url=test_url,
+        test_name=test_name,
+        test_ref=test_ref,
+        test_path=test_path,
+        plan_url=plan_url,
+        plan_name=plan_name,
+        plan_ref=plan_ref,
+        plan_path=plan_path,
+        out_format=out_format,
+    )
 
-    # Process request based on Celery configuration
-    if environ.get("USE_CELERY") == "false":
-        return _process_synchronous_request(service_args, out_format)
-    return _process_async_request(service_args, out_format)
+    # If HTML format, generate a callback page
+    if out_format == "html":
+        logger.debug("Generating HTML status callback")
+        status_callback_url = f"{settings.API_HOSTNAME}/status/html?task-id={task_id}"
+        return HTMLResponse(
+            content=html_generator.generate_status_callback(task_id, status_callback_url, logger),
+        )
+
+    # For other formats, return a JSON response with task information
+    task_info = task_manager.get_task_info(task_id)
+    task_out = _to_task_out(task_info, out_format)
+    return JSONResponse(content=task_out.model_dump())
+
+
+@app.exception_handler(GeneralError)
+async def general_exception_handler(request: Request, exc: GeneralError):
+    """Global exception handler for all tmt errors."""
+    logger.fail(str(exc))
+
+    # Map specific error messages to appropriate status codes
+    if "not found" in str(exc).lower():
+        status_code = status.HTTP_404_NOT_FOUND
+    elif any(
+        msg in str(exc).lower()
+        for msg in [
+            "must be provided together",
+            "missing required",
+            "invalid combination",
+        ]
+    ):
+        status_code = status.HTTP_400_BAD_REQUEST
+    else:
+        status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+
+    return JSONResponse(
+        status_code=status_code,
+        content={"detail": str(exc)},
+    )
 
 
 @app.get("/status")
@@ -350,18 +335,22 @@ def get_task_status(
             detail="task-id is required",
         )
 
-    r = service.main.app.AsyncResult(task_id)
+    task_info = task_manager.get_task_info(task_id)
 
     # Check for specific error conditions in the task result
-    if r.failed():
-        error_message = str(r.result)
-        if "not found" in error_message.lower():
+    if task_info["status"] == FAILURE:
+        error_message = task_info.get("error", "Unknown error")
+        if error_message and "not found" in error_message.lower():
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=error_message,
             )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=error_message or "Task failed",
+        )
 
-    return _to_task_out(r)
+    return _to_task_out(task_info)
 
 
 @app.get("/status/html", response_class=HTMLResponse)
@@ -384,32 +373,47 @@ def get_task_status_html(
             detail="task-id is required",
         )
 
-    r = service.main.app.AsyncResult(task_id)
-    if r.successful() and r.result:
+    task_info = task_manager.get_task_info(task_id)
+
+    if task_info["status"] == SUCCESS and task_info["result"]:
         # For successful tasks, redirect to root endpoint
         return RedirectResponse(
-            url=f"{settings.API_HOSTNAME}/?task-id={r.task_id}",
+            url=f"{settings.API_HOSTNAME}/?task-id={task_id}",
             status_code=303,  # Use 303 See Other for GET redirects
         )
 
-    status_callback_url = f"{settings.API_HOSTNAME}/status/html?task-id={r.task_id}"
+    status_callback_url = f"{settings.API_HOSTNAME}/status/html?task-id={task_id}"
+
+    # For FAILURE status, use the error message if available
+    result = task_info.get("result")
+    if task_info["status"] == FAILURE and task_info.get("error"):
+        result = task_info["error"]
+
     return HTMLResponse(
-        content=html_generator.generate_status_callback(r, status_callback_url, logger),
+        content=html_generator.generate_status_callback(
+            task_id,
+            status_callback_url,
+            logger,
+            status=task_info["status"],
+            result=result,
+        ),
     )
 
 
-def _to_task_out(r: AsyncResult, out_format: str = "json") -> TaskOut:  # type: ignore[type-arg]
-    """Convert a Celery AsyncResult to a TaskOut response model."""
+def _to_task_out(task_info: dict[str, Any], out_format: str = "json") -> TaskOut:
+    """Convert a task info dict to a TaskOut response model."""
     # Use the appropriate status callback URL based on the requested format
     status_callback_url = f"{settings.API_HOSTNAME}/status"
     if out_format == "html":
         status_callback_url += "/html"
-    status_callback_url += f"?task-id={r.task_id}"
+    status_callback_url += f"?task-id={task_info['id']}"
 
     return TaskOut(
-        id=r.task_id,
-        status=r.status,
-        result=r.traceback if r.failed() else r.result,
+        id=task_info["id"],
+        status=task_info["status"],
+        result=task_info.get("error")
+        if task_info["status"] == FAILURE
+        else task_info.get("result"),
         status_callback_url=status_callback_url,
     )
 
@@ -422,26 +426,17 @@ def health_check() -> HealthStatus:
         - Service status and uptime
         - Version information for key components
         - System information
-        - Dependencies status (Redis, Celery)
-
+        - Dependencies status (Valkey)
     """
     logger.debug("Health check requested")
 
-    # Check Celery/Redis status
-    celery_enabled = environ.get("USE_CELERY") != "false"
-    celery_status = "ok"
-    redis_status = "ok"
-
-    if not celery_enabled:
-        celery_status = "disabled"
-        redis_status = "disabled"
-    else:
-        try:
-            # Ping Redis through Celery
-            service.main.app.control.ping(timeout=1.0)
-        except Exception:
-            celery_status = "failed"
-            redis_status = "failed"
+    # Check Valkey status
+    valkey_status = "ok"
+    try:
+        # Ping Valkey
+        task_manager.ping()
+    except Exception:
+        valkey_status = "failed"
 
     return HealthStatus(
         status="ok",
@@ -453,8 +448,7 @@ def health_check() -> HealthStatus:
             tmt=tmt_version,
         ),
         dependencies=DependencyStatus(
-            celery=celery_status,
-            redis=redis_status,
+            valkey=valkey_status,
         ),
         system=SystemInfo(
             platform=platform.platform(),

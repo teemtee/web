@@ -1,8 +1,8 @@
 """HTML generator for tmt-web."""
 
 from pathlib import Path
+from typing import Any
 
-from celery.result import AsyncResult
 from jinja2 import Environment, FileSystemLoader, TemplateNotFound
 from tmt import Logger
 from tmt.utils import GeneralError
@@ -39,21 +39,30 @@ def _render_template(template_name: str, logger: Logger, **kwargs) -> str:
         raise GeneralError(f"Failed to render template '{template_name}'") from err
 
 
-def generate_status_callback(result: AsyncResult, status_callback_url: str, logger: Logger) -> str:  # type: ignore[type-arg]
+def generate_status_callback(
+    task_id: str,
+    status_callback_url: str,
+    logger: Logger,
+    status: str = "PENDING",
+    result: Any | None = None,
+) -> str:
     """
     Generate HTML status callback page.
 
-    :param result: Celery task result
+    :param task_id: ID of the task
     :param status_callback_url: URL for status callback
     :param logger: Logger instance for logging
+    :param status: Task status (default: "PENDING")
+    :param result: Task result data (default: None)
     :return: Rendered HTML page
     :raises: GeneralError if template rendering fails
     """
-    logger.debug("Generating status callback page")
+    logger.debug(f"Generating status callback page for task {task_id}")
     data = {
-        "status": result.status,
+        "task_id": task_id,
+        "status": status,
         "status_callback_url": status_callback_url,
-        "result": result.result,
+        "result": result,
     }
     return _render_template("status_callback.html.j2", logger=logger, **data)
 
