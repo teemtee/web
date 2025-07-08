@@ -100,6 +100,38 @@ def test_get_tree_with_git_suffix(mocker):
     mock_path.with_suffix.assert_called_once_with("")
 
 
+def test_get_tree_with_dot_path(mocker):
+    """Test get_tree with '.' as tree_path (current directory)."""
+    mock_path = mocker.Mock()
+    mock_path.suffix = ""
+    mock_path.with_suffix.return_value = mock_path
+    mock_path.as_posix.return_value = "/path/to/repo"
+    mocker.patch("tmt_web.utils.git_handler.get_git_repository", return_value=mock_path)
+    mocker.patch("tmt.base.Tree")
+    mocker.patch("tmt.plugins.explore")
+
+    get_tree("url", "test", None, ".")
+    # Should not call as_posix() when tree_path is "."
+    mock_path.as_posix.assert_not_called()
+
+
+def test_get_tree_with_dot_path_and_git_suffix(mocker):
+    """Test get_tree with '.' as tree_path and .git suffix."""
+    mock_path = mocker.Mock()
+    mock_path.suffix = ".git"
+    mock_path.with_suffix.return_value = mock_path
+    mock_path.as_posix.return_value = "/path/to/repo"
+    mocker.patch("tmt_web.utils.git_handler.get_git_repository", return_value=mock_path)
+    mocker.patch("tmt.base.Tree")
+    mocker.patch("tmt.plugins.explore")
+
+    get_tree("url", "test", None, ".")
+    # Should still strip .git suffix when tree_path is "."
+    mock_path.with_suffix.assert_called_once_with("")
+    # Should not call as_posix() when tree_path is "."
+    mock_path.as_posix.assert_not_called()
+
+
 def test_format_data_unsupported_format(mocker, logger):
     """Test format_data with unsupported format."""
     test_data = TestData(name="test")
