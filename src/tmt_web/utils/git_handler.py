@@ -145,6 +145,11 @@ def _fetch_remote(common: Common, repo_path: Path, logger: Logger) -> None:
 def _update_branch(common: Common, repo_path: Path, branch: str, logger: Logger) -> None:
     """Ensure the specified branch is up to date with its remote counterpart."""
     try:
+        common.run(Command("git", "show-branch", f"origin/{branch}"), cwd=repo_path)
+    except RunError as err:
+        logger.fail(f"Branch '{branch}' does not exist in repository '{repo_path}'")
+        raise GeneralError(f"Branch {branch}' does not exist in repository '{repo_path}'") from err
+    try:
         # Check if the branch is already up to date
         common.run(Command("git", "diff", "--quiet", branch, f"origin/{branch}"), cwd=repo_path)
         return
