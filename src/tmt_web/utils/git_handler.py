@@ -6,6 +6,7 @@ with support for refs (branch/tag) checkout and repository reuse.
 It uses tmt's Git utilities for robust clone operations with retry logic.
 """
 
+import re
 from shutil import rmtree
 
 from tmt import Logger
@@ -96,8 +97,7 @@ def get_git_repository(url: str, logger: Logger, ref: str | None = None) -> Path
     _fetch_remote(common, destination, logger)
 
     # If no ref is specified, the default branch is used
-    if not ref:
-        ref = _get_default_branch(common, destination, logger)
+    ref = ref or _get_default_branch(common, destination, logger)
 
     try:
         common.run(Command("git", "checkout", ref), cwd=destination)
@@ -106,7 +106,7 @@ def get_git_repository(url: str, logger: Logger, ref: str | None = None) -> Path
         raise AttributeError(f"Failed to checkout ref '{ref}'") from err
 
     # If the ref is a branch, ensure it's up to date
-    if _is_branch(common, destination, ref) and not _is_branch_up_to_date(common, destination, ref):
+    if _is_branch(common, destination, ref):
         _update_branch(common, destination, ref, logger)
 
     return destination
@@ -119,7 +119,9 @@ def _get_default_branch(common: Common, repo_path: Path, logger: Logger) -> str:
             Command("git", "symbolic-ref", "refs/remotes/origin/HEAD"), cwd=repo_path
         )
         if output.stdout:
-            return output.stdout.strip().removeprefix("refs/remotes/origin/")
+            match = re.search(r"refs/remotes/origin/(.*)", output.stdout.strip())
+            if match:
+                return match.group(1)
 
         logger.fail(f"Failed to determine default branch for repository '{repo_path}'")
         raise GeneralError(f"Failed to determine default branch for repository '{repo_path}'")
@@ -141,27 +143,20 @@ def _fetch_remote(common: Common, repo_path: Path, logger: Logger) -> None:
 
 
 def _update_branch(common: Common, repo_path: Path, branch: str, logger: Logger) -> None:
-    """Update the specified branch of a Git repository to match the remote counterpart."""
+    """Ensure the specified branch is up to date with its remote counterpart."""
     try:
-        common.run(Command("git", "reset", "--hard", f"origin/{branch}"), cwd=repo_path)
-    except RunError as err:
-        logger.fail(f"Failed to update branch '{branch}' for repository '{repo_path}'")
-        raise GeneralError(
-            f"Failed to update branch '{branch}' for repository '{repo_path}'"
-        ) from err
-
-
-def _is_branch_up_to_date(common: Common, repo_path: Path, branch: str) -> bool:
-    """
-    Compare the specified branch of a Git repository with its remote counterpart.
-
-    :return: True if the branch is up to date with the remote, False otherwise.
-    """
-    try:
+        # Check if the branch is already up to date
         common.run(Command("git", "diff", "--quiet", branch, f"origin/{branch}"), cwd=repo_path)
-        return True
+        return
     except RunError:
-        return False
+        # Branch is not up to date, proceed with update
+        try:
+            common.run(Command("git", "reset", "--hard", f"origin/{branch}"), cwd=repo_path)
+        except RunError as err:
+            logger.fail(f"Failed to update branch '{branch}' for repository '{repo_path}'")
+            raise GeneralError(
+                f"Failed to update branch '{branch}' for repository '{repo_path}'"
+            ) from err
 
 
 def _is_branch(common: Common, repo_path: Path, ref: str) -> bool:
