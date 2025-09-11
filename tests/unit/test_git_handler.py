@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 import tmt
-from tmt.utils import Command, GeneralError, GitUrlError, RunError
+from tmt.utils import GeneralError, GitUrlError, RunError
 
 from tmt_web import settings
 from tmt_web.utils import git_handler
@@ -121,8 +121,12 @@ class TestGitHandler:
         assert path.exists()
 
         # Mock checkout to fail
-        cmd = Command("git", "checkout", "invalid-branch")
-        mocker.patch("tmt.utils.Command.run", side_effect=RunError("Command failed", cmd, 1))
+        def side_effect(cmd, *args, **kwargs):
+            if cmd._command == ["git", "checkout", "invalid-branch"]:
+                raise RunError("Command failed", cmd, 1)
+            return mocker.DEFAULT
+
+        mocker.patch("tmt.utils.Command.run", side_effect=side_effect, autospec=True)
 
         # Try to get same repo with invalid ref
         with pytest.raises(AttributeError, match="Failed to checkout ref"):
