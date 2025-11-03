@@ -42,15 +42,13 @@ def get_tree(url: str, name: str, ref: str | None, tree_path: str | None) -> tmt
     except Exception as exc:
         raise GeneralError(f"Failed to clone repository: {exc}") from exc
 
-    if tree_path == ".":
-        # Handle current directory case - no path modification needed
-        if path.suffix == ".git":
-            path = path.with_suffix("")
-    elif tree_path is not None:
+    # Remove .git suffix if present
+    if path.suffix == ".git":
+        path = path.with_suffix("")
+
+    # If path is set, construct a path to the tmt Tree
+    if tree_path is not None and tree_path != ".":
         tree_path += "/"
-        # If path is set, construct a path to the tmt Tree
-        if path.suffix == ".git":
-            path = path.with_suffix("")
         path = Path(path.as_posix() + tree_path)
 
     logger.debug(f"Looking for tree in {path}")
