@@ -11,7 +11,10 @@
     <p><strong>Summary:</strong> {{ testorplan.summary }}</p>
     {% endif %}
     {% if testorplan.description %}
-    <p><strong>Description:</strong> {{ testorplan.description }}</p>
+    <div class="description">
+      <p><strong>Description:</strong></p>
+      <pre class="description-text">{{ testorplan.description }}</pre>
+    </div>
     {% endif %}
     {% if testorplan.tier %}
     <p><strong>Tier:</strong> {{ testorplan.tier }}</p>

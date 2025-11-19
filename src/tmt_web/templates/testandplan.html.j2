@@ -12,7 +12,10 @@
     <p><strong>Summary:</strong> {{ test.summary }}</p>
     {% endif %}
     {% if test.description %}
-    <p><strong>Description:</strong> {{ test.description }}</p>
+    <div class="description">
+      <p><strong>Description:</strong></p>
+      <pre class="description-text">{{ test.description }}</pre>
+    </div>
     {% endif %}
     {% if test.tier %}
     <p><strong>Tier:</strong> {{ test.tier }}</p>
@@ -66,7 +69,10 @@
     <p><strong>Summary:</strong> {{ plan.summary }}</p>
     {% endif %}
     {% if plan.description %}
-    <p><strong>Description:</strong> {{ plan.description }}</p>
+    <div class="description">
+      <p><strong>Description:</strong></p>
+      <pre class="description-text">{{ plan.description }}</pre>
+    </div>
     {% endif %}
     {% if plan.tier %}
     <p><strong>Tier:</strong> {{ plan.tier }}</p>
