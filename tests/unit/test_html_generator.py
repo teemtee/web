@@ -223,3 +223,47 @@ class TestHtmlGenerator:
             html_generator._render_template("testorplan.html.j2", logger)
         assert "Failed to render template" in str(exc.value)
         assert "testorplan.html.j2" in str(exc.value)
+
+    def test_multiline_description_rendering(self, logger):
+        """Test that multiline descriptions are rendered correctly with line breaks preserved."""
+        # Create test data with multiline description
+        multiline_description = (
+            "First line of description\n\nSecond line after empty line\nThird line\n\nFourth line"
+        )
+        test_data = TestData(
+            name="multiline-test",
+            summary="Test with multiline description",
+            description=multiline_description,
+            contact=["Test Contact <test@example.com>"],
+            component=["component1"],
+            enabled=True,
+            environment={"KEY": "value"},
+            duration="15m",
+            framework="shell",
+            manual=False,
+            path="/path/to/test",
+            tier="1",
+            order=50,
+            id="test-multiline",
+            tag=["tag1"],
+            fmf_id=FmfIdData(
+                name="test",
+                url="https://example.com/test",
+                path="/path/to/test",
+                ref="main",
+            ),
+        )
+
+        data = html_generator.generate_html_page(test_data, logger)
+
+        # Check that the description is wrapped in proper HTML structure
+        assert '<div class="description">' in data
+        assert '<pre class="description-text">' in data
+        assert "</pre>" in data
+        assert "</div>" in data
+
+        # Check that the multiline content is preserved
+        assert "First line of description" in data
+        assert "Second line after empty line" in data
+        assert "Third line" in data
+        assert "Fourth line" in data
