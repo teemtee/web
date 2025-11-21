@@ -6,6 +6,7 @@ with support for refs (branch/tag) checkout and repository reuse.
 It uses tmt's Git utilities for robust clone operations with retry logic.
 """
 
+import hashlib
 import re
 from shutil import rmtree
 
@@ -20,6 +21,13 @@ from tmt_web import settings
 ROOT_DIR = Path(__file__).resolve().parents[2]
 
 
+def create_hash(text: str):
+    """Create hash of the given text that is consistent across runs."""
+    hashed_text = hashlib.new("sha1", usedforsecurity=False)
+    hashed_text.update(text.encode())
+    return hashed_text.hexdigest()
+
+
 def get_unique_clone_path(url: str) -> Path:
     """
     Generate a unique path for cloning a repository.
@@ -27,8 +35,8 @@ def get_unique_clone_path(url: str) -> Path:
     :param url: Repository URL
     :return: Unique path for cloning
     """
-    url = url.rstrip("/")
-    clone_dir_name = str(abs(hash(url)))
+    url = url.rstrip("/").removesuffix(".git")
+    clone_dir_name = create_hash(url)
     return ROOT_DIR / settings.CLONE_DIR_PATH / clone_dir_name
 
 
@@ -102,8 +110,10 @@ def get_git_repository(url: str, logger: Logger, ref: str | None = None) -> Path
     try:
         common.run(Command("git", "checkout", ref), cwd=destination)
     except RunError as err:
-        logger.fail(f"Failed to checkout ref '{ref}'")
+        logger.fail(f"Failed to checkout ref '{ref}': {err.stderr}")
         raise AttributeError(f"Failed to checkout ref '{ref}'") from err
+
+    _ensure_no_changes(common, destination, logger)
 
     # If the ref is a branch, ensure it's up to date
     if _is_branch(common, destination, ref):
@@ -127,7 +137,9 @@ def _get_default_branch(common: Common, repo_path: Path, logger: Logger) -> str:
         raise GeneralError(f"Failed to determine default branch for repository '{repo_path}'")
 
     except RunError as err:
-        logger.fail(f"Failed to determine default branch for repository '{repo_path}'")
+        logger.fail(
+            f"Failed to determine default branch for repository '{repo_path}': {err.stderr}"
+        )
         raise GeneralError(
             f"Failed to determine default branch for repository '{repo_path}'"
         ) from err
@@ -136,9 +148,21 @@ def _get_default_branch(common: Common, repo_path: Path, logger: Logger) -> str:
 def _fetch_remote(common: Common, repo_path: Path, logger: Logger) -> None:
     """Fetch updates from the remote repository."""
     try:
-        common.run(Command("git", "fetch"), cwd=repo_path)
+        # Fetch all branches and tags, prune deleted ones
+        common.run(
+            Command(
+                "git",
+                "fetch",
+                "origin",
+                "--prune",
+                "--prune-tags",
+                "+refs/heads/*:refs/remotes/origin/*",
+                "+refs/tags/*:refs/tags/*",
+            ),
+            cwd=repo_path,
+        )
     except RunError as err:
-        logger.fail(f"Failed to fetch remote for repository '{repo_path}'")
+        logger.fail(f"Failed to fetch remote for repository '{repo_path}': {err.stderr}")
         raise GeneralError(f"Failed to fetch remote for repository '{repo_path}'") from err
 
 
@@ -147,7 +171,7 @@ def _update_branch(common: Common, repo_path: Path, branch: str, logger: Logger)
     try:
         common.run(Command("git", "show-branch", f"origin/{branch}"), cwd=repo_path)
     except RunError as err:
-        logger.fail(f"Branch '{branch}' does not exist in repository '{repo_path}'")
+        logger.fail(f"Branch '{branch}' does not exist in repository '{repo_path}': {err.stderr}")
         raise GeneralError(f"Branch {branch}' does not exist in repository '{repo_path}'") from err
     try:
         # Check if the branch is already up to date
@@ -158,10 +182,35 @@ def _update_branch(common: Common, repo_path: Path, branch: str, logger: Logger)
         try:
             common.run(Command("git", "reset", "--hard", f"origin/{branch}"), cwd=repo_path)
         except RunError as err:
-            logger.fail(f"Failed to update branch '{branch}' for repository '{repo_path}'")
+            logger.fail(
+                f"Failed to update branch '{branch}' for repository '{repo_path}': {err.stderr}"
+            )
             raise GeneralError(
                 f"Failed to update branch '{branch}' for repository '{repo_path}'"
             ) from err
+
+
+def _ensure_no_changes(common: Common, repo_path: Path, logger: Logger) -> None:
+    """Ensure there are no changes in the repository."""
+    try:
+        output = common.run(Command("git", "status", "--porcelain"), cwd=repo_path)
+        if not output.stdout or not output.stdout.strip():
+            return
+        logger.warning(f"Repository '{repo_path}' has changes:\n{output.stdout.strip()}")
+    except RunError as err:
+        logger.fail(f"Failed to check repository status for '{repo_path}': {err.stderr}")
+        raise GeneralError(f"Failed to check repository status for '{repo_path}'") from err
+
+    try:
+        common.run(Command("git", "restore", "."), cwd=repo_path)
+        common.run(Command("git", "clean", "-fdx"), cwd=repo_path)
+    except RunError as err:
+        logger.fail(
+            f"Repository '{repo_path}' has changes that could not be reverted: {err.stderr}"
+        )
+        raise GeneralError(
+            f"Repository '{repo_path}' has changes that could not be reverted"
+        ) from err
 
 
 def _is_branch(common: Common, repo_path: Path, ref: str) -> bool:
