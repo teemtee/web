@@ -10,6 +10,7 @@ import hashlib
 import re
 from shutil import rmtree
 
+from filelock import FileLock
 from tmt import Logger
 from tmt._compat.pathlib import Path
 from tmt.utils import Command, Common, GeneralError, RunError
@@ -21,11 +22,29 @@ from tmt_web import settings
 ROOT_DIR = Path(__file__).resolve().parents[2]
 
 
-def create_hash(text: str):
+def _create_hash(text: str):
     """Create hash of the given text that is consistent across runs."""
     hashed_text = hashlib.new("sha1", usedforsecurity=False)
     hashed_text.update(text.encode())
     return hashed_text.hexdigest()
+
+
+def get_repo_hash(url: str) -> str:
+    url = url.rstrip("/").removesuffix(".git")
+    return _create_hash(url)
+
+
+def get_repo_lock_path(url: str) -> Path:
+    """
+    Get the path for a repository lock file.
+
+    :param url: Repository URL
+    :return: Path to the lock file for this repository
+    """
+    lock_path = ROOT_DIR / settings.CLONE_DIR_PATH / f"{get_repo_hash(url)}.lock"
+    if not lock_path.parent.exists():
+        lock_path.parent.mkdir(parents=True, exist_ok=True)
+    return lock_path
 
 
 def get_unique_clone_path(url: str) -> Path:
@@ -35,9 +54,7 @@ def get_unique_clone_path(url: str) -> Path:
     :param url: Repository URL
     :return: Unique path for cloning
     """
-    url = url.rstrip("/").removesuffix(".git")
-    clone_dir_name = create_hash(url)
-    return ROOT_DIR / settings.CLONE_DIR_PATH / clone_dir_name
+    return ROOT_DIR / settings.CLONE_DIR_PATH / get_repo_hash(url)
 
 
 def clear_tmp_dir(logger: Logger) -> None:
@@ -77,6 +94,8 @@ def clone_repository(url: str, logger: Logger) -> Path:
     # Get unique path
     destination = get_unique_clone_path(url)
 
+    rmtree(destination, ignore_errors=True)
+
     # Clone with retry logic
     git_clone(url=url, destination=destination, logger=logger)
 
@@ -95,29 +114,35 @@ def get_git_repository(url: str, logger: Logger, ref: str | None = None) -> Path
     :raises: GeneralError if cloning, fetching, or updating a branch fails
     :raises: AttributeError if ref doesn't exist
     """
-    destination = get_unique_clone_path(url)
-    if not destination.exists():
-        clone_repository(url, logger)
+    lock_path = get_repo_lock_path(url)
+    with FileLock(lock_path):
+        destination = get_unique_clone_path(url)
+        if not destination.exists():
+            clone_repository(url, logger)
 
-    common = Common(logger=logger)
+        common = Common(logger=logger)
 
-    # Fetch remote refs
-    _fetch_remote(common, destination, logger)
+        try:
+            # Fetch remote refs
+            _fetch_remote(common, destination, logger)
+        except GeneralError:
+            logger.warning("Unable to fetch remote repository. Trying to clone again.")
+            clone_repository(url, logger)
 
-    # If no ref is specified, the default branch is used
-    ref = ref or _get_default_branch(common, destination, logger)
+        # If no ref is specified, the default branch is used
+        ref = ref or _get_default_branch(common, destination, logger)
 
-    try:
-        common.run(Command("git", "checkout", ref), cwd=destination)
-    except RunError as err:
-        logger.fail(f"Failed to checkout ref '{ref}': {err.stderr}")
-        raise AttributeError(f"Failed to checkout ref '{ref}'") from err
+        try:
+            common.run(Command("git", "checkout", ref), cwd=destination)
+        except RunError as err:
+            logger.fail(f"Failed to checkout ref '{ref}': {err.stderr}")
+            raise AttributeError(f"Failed to checkout ref '{ref}'") from err
 
-    _ensure_no_changes(common, destination, logger)
+        _ensure_no_changes(common, destination, logger)
 
-    # If the ref is a branch, ensure it's up to date
-    if _is_branch(common, destination, ref):
-        _update_branch(common, destination, ref, logger)
+        # If the ref is a branch, ensure it's up to date
+        if _is_branch(common, destination, ref):
+            _update_branch(common, destination, ref, logger)
 
     return destination
 
