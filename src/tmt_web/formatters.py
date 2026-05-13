@@ -3,7 +3,7 @@
 import json
 
 from tmt import Logger
-from tmt.utils import dict_to_yaml
+from tmt.utils import to_yaml
 
 from tmt_web.generators import html_generator
 from tmt_web.models import PlanData, TestData, TestPlanData
@@ -20,7 +20,7 @@ def _format_yaml(data: TestData | PlanData | TestPlanData) -> str:
     data_dict = data.model_dump(by_alias=True)
     # Then use tmt's yaml formatter
 
-    return dict_to_yaml(data_dict)
+    return to_yaml(data_dict)
 
 
 def _format_html(data: TestData | PlanData | TestPlanData, logger: Logger) -> str:
