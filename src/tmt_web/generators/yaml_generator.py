@@ -1,7 +1,7 @@
 from typing import Any
 
 from tmt import Logger, Plan, Test
-from tmt.utils import GeneralError, dict_to_yaml
+from tmt.utils import GeneralError, to_yaml
 
 from tmt_web.generators.json_generator import CombinedTestPlanModel, ObjectModel
 
@@ -17,7 +17,7 @@ def _serialize_yaml(data: dict[str, Any], logger: Logger) -> str:
     """
     try:
         logger.debug("Serializing data to YAML")
-        return dict_to_yaml(data)
+        return to_yaml(data)
     except Exception as err:
         logger.fail("Failed to serialize data to YAML")
         raise GeneralError("Failed to generate YAML output") from err
