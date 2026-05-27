@@ -74,7 +74,9 @@ class TestGitHandler:
     def test_clone_repository_invalid_url(self, logger):
         """Test cloning with invalid repository URL."""
         with pytest.raises(GitUrlError):
-            git_handler.clone_repository(self.INVALID_REPO, logger)
+            git_handler.clone_repository(
+                self.INVALID_REPO, git_handler.get_unique_clone_path(self.INVALID_REPO), logger
+            )
 
     @pytest.mark.usefixtures("_clean_repo_dir")
     def test_get_git_repository_new(self, logger):
@@ -124,7 +126,10 @@ class TestGitHandler:
         def side_effect(cmd, *args, **kwargs):
             if cmd._command == ["git", "checkout", "invalid-branch"]:
                 raise RunError("Command failed", cmd, 1)
-            return mocker.DEFAULT
+            result = mocker.MagicMock()
+            result.stdout = None
+            result.stderr = None
+            return result
 
         mocker.patch("tmt.utils.Command.run", side_effect=side_effect, autospec=True)
 
