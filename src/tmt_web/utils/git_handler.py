@@ -10,6 +10,7 @@ import hashlib
 import re
 from shutil import rmtree
 
+from filelock import FileLock
 from tmt import Logger
 from tmt._compat.pathlib import Path
 from tmt.utils import Command, Common, GeneralError, RunError
@@ -21,7 +22,7 @@ from tmt_web import settings
 ROOT_DIR = Path(__file__).resolve().parents[2]
 
 
-def create_hash(text: str):
+def _create_hash(text: str):
     """Create hash of the given text that is consistent across runs."""
     hashed_text = hashlib.new("sha1", usedforsecurity=False)
     hashed_text.update(text.encode())
@@ -35,9 +36,7 @@ def get_unique_clone_path(url: str) -> Path:
     :param url: Repository URL
     :return: Unique path for cloning
     """
-    url = url.rstrip("/").removesuffix(".git")
-    clone_dir_name = create_hash(url)
-    return ROOT_DIR / settings.CLONE_DIR_PATH / clone_dir_name
+    return ROOT_DIR / settings.CLONE_DIR_PATH / _create_hash(url.rstrip("/").removesuffix(".git"))
 
 
 def clear_tmp_dir(logger: Logger) -> None:
@@ -59,13 +58,13 @@ def clear_tmp_dir(logger: Logger) -> None:
         raise GeneralError(f"Failed to clear repository clone directory '{path}'") from err
 
 
-def clone_repository(url: str, logger: Logger) -> Path:
+def clone_repository(url: str, destination: Path, logger: Logger) -> Path:
     """
     Clone a Git repository to a unique path.
 
     :param url: Repository URL
+    :param destination: Path to where repository should be cloned
     :param logger: Logger instance
-    :param ref: Optional ref to checkout
     :return: Path to the cloned repository
     :raises: GitUrlError if URL is invalid
     :raises: GeneralError if clone fails
@@ -73,9 +72,6 @@ def clone_repository(url: str, logger: Logger) -> Path:
     """
     # Validate URL
     url = check_git_url(url, logger)
-
-    # Get unique path
-    destination = get_unique_clone_path(url)
 
     # Clone with retry logic
     git_clone(url=url, destination=destination, logger=logger)
@@ -96,30 +92,41 @@ def get_git_repository(url: str, logger: Logger, ref: str | None = None) -> Path
     :raises: AttributeError if ref doesn't exist
     """
     destination = get_unique_clone_path(url)
-    if not destination.exists():
-        clone_repository(url, logger)
+    with FileLock(destination.with_name(f"{destination.name}.lock")):
+        if not destination.exists():
+            clone_repository(url, destination, logger)
 
-    common = Common(logger=logger)
+        common = Common(logger=logger)
 
-    # Fetch remote refs
-    _fetch_remote(common, destination, logger)
+        try:
+            # Fetch remote refs
+            _fetch_remote(common, destination, logger)
+        except GeneralError:
+            logger.warning("Unable to fetch remote repository. Trying to clone again.")
+            rmtree(destination, ignore_errors=True)
+            clone_repository(url, destination, logger)
 
-    # If no ref is specified, the default branch is used
-    ref = ref or _get_default_branch(common, destination, logger)
+        # If no ref is specified, the default branch is used
+        ref = ref or _get_default_branch(common, destination, logger)
 
-    try:
-        common.run(Command("git", "checkout", ref), cwd=destination)
-    except RunError as err:
-        logger.fail(f"Failed to checkout ref '{ref}': {err.stderr}")
-        raise AttributeError(f"Failed to checkout ref '{ref}'") from err
+        # If the ref is a branch, ensure it's up to date
+        if _is_branch(common, destination, ref):
+            _reset_branch(common, destination, ref, logger)
 
-    _ensure_no_changes(common, destination, logger)
-
-    # If the ref is a branch, ensure it's up to date
-    if _is_branch(common, destination, ref):
-        _update_branch(common, destination, ref, logger)
+        _checkout(common, destination, ref, logger)
 
     return destination
+
+
+def _checkout(common: Common, repo_path: Path, ref: str, logger: Logger):
+    repo_status = _get_repository_status(common, repo_path)
+    try:
+        common.run(Command("git", "checkout", ref), cwd=repo_path)
+    except RunError as err:
+        logger.fail(f"Failed to checkout ref '{ref}': {err.stderr}")
+        if repo_status:
+            logger.fail(f"Previous repository status:\n{repo_status}")
+        raise AttributeError(f"Failed to checkout ref '{ref}'") from err
 
 
 def _get_default_branch(common: Common, repo_path: Path, logger: Logger) -> str:
@@ -147,6 +154,7 @@ def _get_default_branch(common: Common, repo_path: Path, logger: Logger) -> str:
 
 def _fetch_remote(common: Common, repo_path: Path, logger: Logger) -> None:
     """Fetch updates from the remote repository."""
+    repo_status = _get_repository_status(common, repo_path)
     try:
         # Fetch all branches and tags, prune deleted ones
         common.run(
@@ -163,53 +171,24 @@ def _fetch_remote(common: Common, repo_path: Path, logger: Logger) -> None:
         )
     except RunError as err:
         logger.fail(f"Failed to fetch remote for repository '{repo_path}': {err.stderr}")
+        if repo_status:
+            logger.fail(f"Previous repository status:\n{repo_status}")
         raise GeneralError(f"Failed to fetch remote for repository '{repo_path}'") from err
 
 
-def _update_branch(common: Common, repo_path: Path, branch: str, logger: Logger) -> None:
+def _reset_branch(common: Common, repo_path: Path, branch: str, logger: Logger) -> None:
     """Ensure the specified branch is up to date with its remote counterpart."""
+    repo_status = _get_repository_status(common, repo_path)
     try:
-        common.run(Command("git", "show-branch", f"origin/{branch}"), cwd=repo_path)
-    except RunError as err:
-        logger.fail(f"Branch '{branch}' does not exist in repository '{repo_path}': {err.stderr}")
-        raise GeneralError(f"Branch {branch}' does not exist in repository '{repo_path}'") from err
-    try:
-        # Check if the branch is already up to date
-        common.run(Command("git", "diff", "--quiet", branch, f"origin/{branch}"), cwd=repo_path)
-        return
-    except RunError:
-        # Branch is not up to date, proceed with update
-        try:
-            common.run(Command("git", "reset", "--hard", f"origin/{branch}"), cwd=repo_path)
-        except RunError as err:
-            logger.fail(
-                f"Failed to update branch '{branch}' for repository '{repo_path}': {err.stderr}"
-            )
-            raise GeneralError(
-                f"Failed to update branch '{branch}' for repository '{repo_path}'"
-            ) from err
-
-
-def _ensure_no_changes(common: Common, repo_path: Path, logger: Logger) -> None:
-    """Ensure there are no changes in the repository."""
-    try:
-        output = common.run(Command("git", "status", "--porcelain"), cwd=repo_path)
-        if not output.stdout or not output.stdout.strip():
-            return
-        logger.warning(f"Repository '{repo_path}' has changes:\n{output.stdout.strip()}")
-    except RunError as err:
-        logger.fail(f"Failed to check repository status for '{repo_path}': {err.stderr}")
-        raise GeneralError(f"Failed to check repository status for '{repo_path}'") from err
-
-    try:
-        common.run(Command("git", "restore", "."), cwd=repo_path)
-        common.run(Command("git", "clean", "-fdx"), cwd=repo_path)
+        common.run(Command("git", "reset", "--hard", f"origin/{branch}"), cwd=repo_path)
     except RunError as err:
         logger.fail(
-            f"Repository '{repo_path}' has changes that could not be reverted: {err.stderr}"
+            f"Failed to update branch '{branch}' for repository '{repo_path}': {err.stderr}"
         )
+        if repo_status:
+            logger.fail(f"Previous repository status:\n{repo_status}")
         raise GeneralError(
-            f"Repository '{repo_path}' has changes that could not be reverted"
+            f"Failed to update branch '{branch}' for repository '{repo_path}'"
         ) from err
 
 
@@ -224,3 +203,18 @@ def _is_branch(common: Common, repo_path: Path, ref: str) -> bool:
         return True
     except RunError:
         return False
+
+
+def _get_repository_status(common: Common, repo_path: Path) -> str | None:
+    """Get the current status of a Git repository."""
+    try:
+        log_result = common.run(Command("git", "log", "-1"), cwd=repo_path)
+        status_result = common.run(Command("git", "status"), cwd=repo_path)
+
+        outputs = [output.strip() for output in (log_result.stdout, status_result.stdout) if output]
+        if outputs:
+            return "\n".join(outputs)
+
+        return None
+    except RunError:
+        return None
