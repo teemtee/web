@@ -20,6 +20,7 @@ from tmt_web import settings
 
 # Root directory is two levels up from this file
 ROOT_DIR = Path(__file__).resolve().parents[2]
+MAX_RETRIES = 2
 
 
 def _create_hash(text: str):
@@ -93,28 +94,34 @@ def get_git_repository(url: str, logger: Logger, ref: str | None = None) -> Path
     """
     destination = get_unique_clone_path(url)
     with FileLock(destination.with_name(f"{destination.name}.lock")):
-        if not destination.exists():
-            clone_repository(url, destination, logger)
+        for attempt in range(MAX_RETRIES):
+            if not destination.exists():
+                clone_repository(url, destination, logger)
 
-        common = Common(logger=logger)
+            common = Common(logger=logger)
 
-        try:
-            # Fetch remote refs
-            _fetch_remote(common, destination, logger)
-        except GeneralError:
-            logger.warning("Unable to fetch remote repository. Trying to clone again.")
-            rmtree(destination, ignore_errors=True)
-            clone_repository(url, destination, logger)
+            try:
+                _fetch_remote(common, destination, logger)
 
-        # If no ref is specified, the default branch is used
-        ref = ref or _get_default_branch(common, destination, logger)
+                # If no ref is specified, the default branch is used
+                ref = ref or _get_default_branch(common, destination, logger)
 
-        # If the ref is a branch, ensure it's up to date
-        if _is_branch(common, destination, ref):
-            _reset_branch(common, destination, ref, logger)
+                # Clean repository state before checkout, log potential issues
+                _clean_and_reset(common, destination, "HEAD", logger)
 
-        _checkout(common, destination, ref, logger)
+                _checkout(common, destination, ref, logger)
 
+                # After switching to a branch, reset it to the latest remote state
+                if _is_branch(common, destination, ref):
+                    _clean_and_reset(common, destination, f"origin/{ref}", logger)
+            except GeneralError:
+                if attempt == MAX_RETRIES - 1:
+                    raise
+                logger.warning("Repository is in an invalid state. Trying to clone again.")
+                rmtree(destination, ignore_errors=True)
+                continue
+
+            break
     return destination
 
 
@@ -176,19 +183,20 @@ def _fetch_remote(common: Common, repo_path: Path, logger: Logger) -> None:
         raise GeneralError(f"Failed to fetch remote for repository '{repo_path}'") from err
 
 
-def _reset_branch(common: Common, repo_path: Path, branch: str, logger: Logger) -> None:
-    """Ensure the specified branch is up to date with its remote counterpart."""
+def _clean_and_reset(common: Common, repo_path: Path, target: str, logger: Logger) -> None:
+    """Reset the working tree to ``target`` and remove untracked files."""
     repo_status = _get_repository_status(common, repo_path)
     try:
-        common.run(Command("git", "reset", "--hard", f"origin/{branch}"), cwd=repo_path)
+        common.run(Command("git", "reset", "--hard", target), cwd=repo_path)
+        common.run(Command("git", "clean", "-fdx"), cwd=repo_path)
     except RunError as err:
         logger.fail(
-            f"Failed to update branch '{branch}' for repository '{repo_path}': {err.stderr}"
+            f"Failed to reset worktree to '{target}' for repository '{repo_path}': {err.stderr}"
         )
         if repo_status:
             logger.fail(f"Previous repository status:\n{repo_status}")
         raise GeneralError(
-            f"Failed to update branch '{branch}' for repository '{repo_path}'"
+            f"Failed to reset worktree to '{target}' for repository '{repo_path}'"
         ) from err
 
 
