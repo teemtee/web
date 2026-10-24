@@ -74,18 +74,23 @@ if `format` is set to `html`.
     `json`, other options are `yaml`, `html` (serves as a basic
     human-readable output format)
 
+  * `task-id` - ID of an existing task - accepts a `string`, when set
+    the status of that task is returned instead of a new task being
+    created
+
 ### `/status`
 
 Returns a status of the tmt object being processed by the backend.
 
-  * `task_id` - ID of the task - accepts a `string`
+  * `task-id` - ID of the task - accepts a `string`
 
 ### `/status/html`
 
 Returns a status of the tmt object being processed by the backend in a
-simple HTML formatting.
+simple HTML formatting. Once the task has succeeded, the response
+redirects to the `/` endpoint where the rendered result is shown.
 
-  * `task_id` - ID of the task - accepts a `string`
+  * `task-id` - ID of the task - accepts a `string`
 
 ### `/health`
 
